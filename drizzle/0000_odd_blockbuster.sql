@@ -1,6 +1,6 @@
 CREATE TYPE "public"."role_user" AS ENUM('user', 'admin');--> statement-breakpoint
 CREATE TABLE "email_verifications" (
-	"id" integer PRIMARY KEY NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"userId" integer,
 	"code" text NOT NULL,
 	"expired_at" timestamp NOT NULL,
