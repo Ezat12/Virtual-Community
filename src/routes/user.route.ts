@@ -9,7 +9,8 @@ import {
 import { validateUser } from "../middleware/validateCreateUser";
 import { upload } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
-import { protectAuth } from "../controllers/auth.controller";
+import { protectAuth } from "../middleware/auth/protectAuth";
+// import { protectAuth } from "../controllers/auth.controller";
 const router = express.Router();
 
 router

@@ -7,6 +7,12 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
+  if (err.name === "TokenExpiredError") {
+    err = errorExpiredToken();
+  }
+  if (err.name === "JsonWebTokenError") {
+    err = errorInvalidToken();
+  }
   const statusCode: number = err instanceof ApiError ? err.statusCode : 500;
   const state: string = err instanceof ApiError ? err.state : "error";
 
@@ -16,3 +22,9 @@ export const errorHandler = (
     stack: err.stack,
   });
 };
+
+const errorExpiredToken = () =>
+  new ApiError("Your session has expired. Please log in again.", 401);
+
+const errorInvalidToken = () =>
+  new ApiError("Your token is invalid. Please log in again." , 401);
