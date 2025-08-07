@@ -5,7 +5,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { ApiError } from "./utils/apiError";
 import userRoute from "./routes/user.route";
 import authRoute from "./routes/auth.route";
-// import "./types/express";
+import communityRoute from "./routes/communities.routes";
 
 import path from "path";
 const app = express();
@@ -21,6 +21,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Routes
 app.use("/api/v1/users", userRoute);
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/communities", communityRoute);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new ApiError("route is not success", 404));
