@@ -31,7 +31,7 @@ export const createCommunity = expressAsyncHandler(
   }
 );
 
-export const getCommunity = expressAsyncHandler(
+export const getCommunityById = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const communityId = Number(req.params.id);
 
@@ -44,11 +44,6 @@ export const getCommunity = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    // if (community.createdBy !== req.user.id || req.user.role !== "admin") {
-    //   return next(
-    //     new ApiError("You are not allowed to get this community", 401)
-    //   );
-    // }
     res.status(200).json({
       status: "success",
       data: community,
@@ -89,6 +84,73 @@ export const getAllCommunities = expressAsyncHandler(
         Number(totalCount.count) / (Number(req.query.limit) || 10)
       ),
       data: result,
+    });
+  }
+);
+
+export const updateCommunity = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user.id;
+    const communityId = Number(req.params.id);
+
+    const [community] = await db
+      .select()
+      .from(Community)
+      .where(eq(Community.id, communityId));
+
+    if (!community) {
+      return next(new ApiError("Community not found", 404));
+    }
+
+    if (community.createdBy !== userId || req.user.role !== "admin") {
+      return next(
+        new ApiError("You are not authorized to update this community", 403)
+      );
+    }
+
+    const updatedCommunity = await db
+      .update(Community)
+      .set({
+        name: req.body.name,
+        description: req.body.description,
+        avatarUrl: req.body.avatarUrl || null,
+      })
+      .where(eq(Community.id, communityId))
+      .returning();
+
+    res.status(200).json({
+      status: "success",
+      message: "Community updated successfully",
+      data: updatedCommunity,
+    });
+  }
+);
+
+export const deleteCommunity = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user.id;
+    const communityId = Number(req.params.id);
+
+    const [community] = await db
+      .select()
+      .from(Community)
+      .where(eq(Community.id, communityId));
+
+    if (!community) {
+      return next(new ApiError("Community not found", 404));
+    }
+
+    if (community.createdBy !== userId || req.user.role !== "admin") {
+      return next(
+        new ApiError("You are not authorized to delete this community", 403)
+      );
+    }
+
+    await db.delete(Community).where(eq(Community.id, communityId));
+
+    res.status(200).json({
+      status: "success",
+      message: "Community deleted successfully",
     });
   }
 );
