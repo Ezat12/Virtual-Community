@@ -1,17 +1,5 @@
 
--- SELECT * FROM users;
 
--- SELECT * FROM email_verifications;
--- SELECT * FROM users;
+SELECT * FROM community_admins
+INNER JOIN users ON users.id = community_admins.user_id;
 
--- DELETE FROM users; 
--- DELETE FROM email_verifications; 
-
--- UPDATE users
--- SET email='ezatelbery187@gmail.com'
--- WHERE id = 1;
-
-SELECT * FROM communities;
-
-
--- UPDATE users SET email_verified = TRUE WHERE id =8;

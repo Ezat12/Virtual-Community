@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
 import { ApiError } from "../utils/apiError";
 import { db } from "../db";
-import { communitiesSchema as Community, usersSchema } from "../schemas";
+import {
+  communitiesSchema as Community,
+  usersSchema,
+  communityAdminsSchema as CommunityAdmin,
+} from "../schemas";
 import { and, eq, sql } from "drizzle-orm";
 import { ApiFeatures } from "../utils/ApiFeatures";
 import { count } from "console";
@@ -102,7 +106,21 @@ export const updateCommunity = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    if (community.createdBy !== userId || req.user.role !== "admin") {
+    const admins = await db
+      .select()
+      .from(CommunityAdmin)
+      .where(eq(CommunityAdmin.communityId, community.id));
+
+    const checkUserIsAllowed = admins.some(
+      (admin) =>
+        admin.userId === userId && admin.permissions.includes("edit_settings")
+    );
+
+    if (
+      community.createdBy !== userId &&
+      req.user.role !== "admin" &&
+      checkUserIsAllowed
+    ) {
       return next(
         new ApiError("You are not authorized to update this community", 403)
       );
@@ -111,9 +129,13 @@ export const updateCommunity = expressAsyncHandler(
     const updatedCommunity = await db
       .update(Community)
       .set({
-        name: req.body.name,
-        description: req.body.description,
-        avatarUrl: req.body.avatarUrl || null,
+        name: req.body?.name ? req.body?.name : community.name,
+        description: req.body.description
+          ? req.body?.description
+          : community.description,
+        avatarUrl: req.body?.avatarUrl
+          ? req.body?.avatarUrl
+          : community.avatarUrl,
       })
       .where(eq(Community.id, communityId))
       .returning();
@@ -140,7 +162,7 @@ export const deleteCommunity = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    if (community.createdBy !== userId || req.user.role !== "admin") {
+    if (community.createdBy !== userId && req.user.role !== "admin") {
       return next(
         new ApiError("You are not authorized to delete this community", 403)
       );
@@ -154,5 +176,3 @@ export const deleteCommunity = expressAsyncHandler(
     });
   }
 );
-
-// export const

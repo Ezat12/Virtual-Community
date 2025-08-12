@@ -1,5 +1,5 @@
 import express from "express";
-import { validateUser } from "../middleware/validateCreateUser";
+import { validateUser } from "../middleware/validateUser";
 import { upload } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
 import {

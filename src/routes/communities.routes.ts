@@ -3,23 +3,37 @@ import { protectAuth } from "../middleware/auth/protectAuth";
 import { allowedTo } from "../middleware/auth/allowedTo";
 import {
   createCommunity,
+  deleteCommunity,
   getAllCommunities,
+  getCommunityById,
+  updateCommunity,
 } from "../controllers/community.controller";
 import { upload } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
-import { validateCommunity } from "../middleware/validateCommunity";
+import { validateCommunityCreated, validateCommunityUpdated } from "../middleware/validateCommunity";
 const router = express.Router();
 
 router
   .route("/")
   .post(
     protectAuth,
-    allowedTo("user", "admin"),
     upload.single("avatarUrl"),
-    validateCommunity,
+    validateCommunityCreated,
     uploadToCloudinary,
     createCommunity
   )
   .get(getAllCommunities);
+
+router
+  .route("/:id")
+  .get(getCommunityById)
+  .put(
+    protectAuth,
+    upload.single("avatarUrl"),
+    validateCommunityUpdated,
+    uploadToCloudinary,
+    updateCommunity
+  )
+  .delete(protectAuth, deleteCommunity);
 
 export default router;

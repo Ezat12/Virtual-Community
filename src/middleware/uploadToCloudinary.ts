@@ -33,6 +33,7 @@ export const uploadToCloudinary = async (
     req.body.avatarUrl = result.secure_url;
     next();
   } catch (e) {
+    console.log(e);
     res.status(500).json({ status: "error", error: "Image upload failed" });
   }
 };
