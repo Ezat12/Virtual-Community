@@ -7,7 +7,8 @@ import {
   communityAdminsSchema as CommunityAdmin,
   usersSchema as User,
 } from "../schemas";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { ApiFeatures } from "../utils/ApiFeatures";
 
 export const addAdmin = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -201,19 +202,51 @@ export const getAllAdmins = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    const admins = await db
-      .select({
-        adminId: CommunityAdmin.userId,
-        communityId: CommunityAdmin.communityId,
-        permissions: CommunityAdmin.permissions,
-        name: User.name,
-        email: User.email,
-        avatar: User.avatarUrl,
-      })
-      .from(CommunityAdmin)
-      .where(eq(CommunityAdmin.communityId, community.id))
-      .innerJoin(User, eq(CommunityAdmin.userId, User.id));
+    // const baseQuery = db
+    //   .select({
+    //     adminId: CommunityAdmin.userId,
+    //     communityId: CommunityAdmin.communityId,
+    //     permissions: CommunityAdmin.permissions,
+    //     name: User.name,
+    //     email: User.email,
+    //     avatar: User.avatarUrl,
+    //   })
+    //   .from(CommunityAdmin)
+    //   .innerJoin(User, eq(CommunityAdmin.userId, User.id));
 
-    res.status(200).json({ status: "success", data: admins });
+    const features = new ApiFeatures(db, CommunityAdmin, req.query, {
+      idCommunityAdmin: CommunityAdmin.id,
+      adminId: CommunityAdmin.userId,
+      communityId: CommunityAdmin.communityId,
+      permissions: CommunityAdmin.permissions,
+      name: User.name,
+      email: User.email,
+      avatar: User.avatarUrl,
+    });
+
+    const finalQuery = features
+      .join(User, eq(CommunityAdmin.userId, User.id), "inner")
+      .filter()
+      .sort()
+      .selectFields()
+      .paginate()
+      .build();
+
+    const result = await finalQuery;
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(CommunityAdmin);
+
+    res.status(200).json({
+      status: "success",
+      results: result.length,
+      totalCount: Number(totalCount.count),
+      currentPage: parseInt(req.query.page as string) || 1,
+      totalPages: Math.ceil(
+        Number(totalCount.count) / (Number(req.query.limit) || 10)
+      ),
+      data: result,
+    });
   }
 );

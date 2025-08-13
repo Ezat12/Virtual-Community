@@ -57,8 +57,6 @@ export const getCommunityById = expressAsyncHandler(
 
 export const getAllCommunities = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    // const communities = db.select().from(Community);
-
     const features = new ApiFeatures(db, Community, req.query, {
       id: Community.id,
       name: Community.name,
