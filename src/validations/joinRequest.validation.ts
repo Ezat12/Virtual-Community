@@ -6,5 +6,6 @@ export const joinRequestValidation = z.object({
     .nonempty({ error: "Community id is required" }),
   userId: z
     .string({ error: "User id is required" })
-    .nonempty({ error: "User id is required" }),
+    .nonempty({ error: "User id is required" })
+    .optional(),
 });

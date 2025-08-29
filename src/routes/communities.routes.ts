@@ -41,6 +41,6 @@ router
   )
   .delete(protectAuth, deleteCommunity);
 
-router.use("/:communityId/members", communityMemberShips);
+router.use("/:communityId/memberships", communityMemberShips);
 
 export default router;

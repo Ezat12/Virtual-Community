@@ -11,6 +11,8 @@ import communityAdmin from "./routes/communityAdmins.route";
 import path from "path";
 const app = express();
 
+// filter map reduce
+
 dotenv.config();
 
 app.use(morgan("dev"));

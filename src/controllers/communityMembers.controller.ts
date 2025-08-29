@@ -8,7 +8,7 @@ import {
   joinRequestSchema as JoinRequest,
   usersSchema,
 } from "../schemas";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
 
 const IsAdminToManageUsers = async (communityId: number, id: number) => {
@@ -31,17 +31,81 @@ const IsAdminToManageUsers = async (communityId: number, id: number) => {
 };
 
 export const joinCommunity = expressAsyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     const userId = req.user.id;
     const community = req.community;
 
+    const [existingMember] = await db
+      .select()
+      .from(CommunityMemberShip)
+      .where(
+        and(
+          eq(CommunityMemberShip.userId, userId),
+          eq(CommunityMemberShip.communityId, community.id)
+        )
+      );
+
+    // Check if user had membership before
+    if (existingMember) {
+      if (existingMember.removedAt === null) {
+        return next(new ApiError("You are already a member", 400));
+      }
+
+      if (existingMember.removedBy) {
+        const [joinRequest] = await db
+          .insert(JoinRequest)
+          .values({
+            communityId: community.id,
+            userId,
+            status: "pending",
+          })
+          .returning();
+
+        return res.status(201).json({
+          status: "success",
+          message: "Your join request is pending approval",
+          data: joinRequest,
+        });
+      }
+
+      if (community.privacy === "public") {
+        const [reactivated] = await db
+          .update(CommunityMemberShip)
+          .set({ removedAt: null, removedBy: null })
+          .where(eq(CommunityMemberShip.id, existingMember.id))
+          .returning();
+
+        return res.status(200).json({
+          status: "success",
+          message: "Welcome back to the community",
+          data: reactivated,
+        });
+      } else {
+        const [joinRequest] = await db
+          .insert(JoinRequest)
+          .values({
+            communityId: community.id,
+            userId,
+            status: "pending",
+          })
+          .returning();
+
+        return res.status(201).json({
+          status: "success",
+          message: "Your join request is pending approval",
+          data: joinRequest,
+        });
+      }
+    }
+
+    // First time joining
     if (community.privacy === "public") {
       const [communityMemberShip] = await db
         .insert(CommunityMemberShip)
         .values({ userId, communityId: community.id })
         .returning();
 
-      res.status(201).json({
+      return res.status(201).json({
         status: "success",
         message: "Added member successfully",
         data: communityMemberShip,
@@ -56,7 +120,7 @@ export const joinCommunity = expressAsyncHandler(
         })
         .returning();
 
-      res.status(201).json({
+      return res.status(201).json({
         status: "success",
         message: "Your join request is pending approval",
         data: joinRequest,
@@ -80,12 +144,19 @@ export const leaveCommunity = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    const [dataLeavingMember] = await db
-      .delete(CommunityMemberShip)
+    if (community.createdBy === userId) {
+      return next(
+        new ApiError("Community owners cannot leave their community", 400)
+      );
+    }
+
+    const [member] = await db
+      .update(CommunityMemberShip)
+      .set({ removedAt: new Date(), removedBy: null })
       .where(
         and(
-          eq(CommunityMemberShip.userId, userId),
-          eq(Community.id, Number(communityId))
+          eq(CommunityMemberShip.userId, Number(userId)),
+          eq(CommunityMemberShip.communityId, Number(communityId))
         )
       )
       .returning();
@@ -93,7 +164,7 @@ export const leaveCommunity = expressAsyncHandler(
     res.status(200).json({
       status: "success",
       message: "Deleted member successfully",
-      data: dataLeavingMember,
+      data: member,
     });
   }
 );
@@ -126,15 +197,15 @@ export const deleteMemberByAdmin = expressAsyncHandler(
       return next(new ApiError("Not found member in this community", 404));
     }
 
-    if (Number(memberId) === user.id) {
-      return next(new ApiError("Admins cannot remove themselves", 400));
-    }
-
     const canManageUsers = await IsAdminToManageUsers(community.id, user.id);
     if (!canManageUsers && community.createdBy !== user.id) {
       return next(
         new ApiError("You are not authorized to access this route", 403)
       );
+    }
+
+    if (Number(memberId) === user.id) {
+      return next(new ApiError("Admins cannot remove themselves", 400));
     }
 
     const [member] = await db
@@ -292,15 +363,36 @@ export const getAllMembers = expressAsyncHandler(
 
     const allMembers = await db
       .select({
+        idMember: CommunityMemberShip.id,
         userId: CommunityMemberShip.userId,
         userName: usersSchema.name,
         userImage: usersSchema.avatarUrl,
         userEmail: usersSchema.email,
+        userRole: sql<string>` CASE
+        WHEN ${community.createdBy} = ${usersSchema.id} THEN 'owner'
+        WHEN ${CommunityAdmins.userId} IS NOT NULL THEN 'admin'
+        ELSE 'member'
+      END`,
       })
       .from(CommunityMemberShip)
       .innerJoin(usersSchema, eq(usersSchema.id, CommunityMemberShip.userId))
-      .where(eq(CommunityMemberShip.communityId, community.id));
+      .leftJoin(
+        CommunityAdmins,
+        and(
+          eq(CommunityAdmins.userId, CommunityMemberShip.userId),
+          eq(CommunityAdmins.communityId, community.id)
+        )
+      )
+      .where(
+        and(
+          eq(CommunityMemberShip.communityId, community.id),
+          isNull(CommunityMemberShip.removedAt)
+        )
+      );
 
-    res.status(200).json({ status: "success", data: allMembers });
+    res.status(200).json({
+      status: "success",
+      data: allMembers,
+    });
   }
 );

@@ -8,20 +8,21 @@ import {
   joinCommunity,
   leaveCommunity,
 } from "../controllers/communityMembers.controller";
+import { validateJoinRequest } from "../middleware/validation/validateCommunityMemberShip";
 
 const router = express.Router({ mergeParams: true });
 
 router.use(protectAuth);
 
-router.post("/:communityId/join", joinCommunity);
+router.post("/join", validateJoinRequest, joinCommunity);
 
-router.delete("/:communityId/leave", leaveCommunity);
-router.delete("/:communityId/members/:memberId", deleteMemberByAdmin);
+router.delete("/leave", leaveCommunity);
+router.delete("/delete-member/:memberId", deleteMemberByAdmin);
 
-router.get("/:communityId/join-request", getPendingRequest);
+router.get("/join-requests", getPendingRequest);
 
-router.patch("/:communityId/join-requests/:requestId", handleJoinRequest);
+router.patch("/join-requests/:requestId", handleJoinRequest);
 
-router.get("/:communityId/members", getAllMembers);
+router.get("/members", getAllMembers);
 
 export default router;

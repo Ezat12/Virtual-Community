@@ -6,6 +6,7 @@ import {
   communitiesSchema as Community,
   usersSchema,
   communityAdminsSchema as CommunityAdmin,
+  communityMembershipsSchema,
 } from "../schemas";
 import { and, eq, sql } from "drizzle-orm";
 import { ApiFeatures } from "../utils/ApiFeatures";
@@ -25,6 +26,14 @@ export const createCommunity = expressAsyncHandler(
         avatarUrl: req.body.avatarUrl || null,
         createdBy: userId,
         privacy: req.body.privacy || "public",
+      })
+      .returning();
+
+    await db
+      .insert(communityMembershipsSchema)
+      .values({
+        userId,
+        communityId: community.id,
       })
       .returning();
 

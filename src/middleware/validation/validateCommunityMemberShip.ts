@@ -42,7 +42,9 @@ export const validateJoinRequest = expressAsyncHandler(
         );
 
       if (existingMembership) {
-        return next(new ApiError("You are already a member", 400));
+        return next(
+          new ApiError("You are already a member in this community", 400)
+        );
       }
 
       // Check if already has pending request
