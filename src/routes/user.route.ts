@@ -6,7 +6,7 @@ import {
   getUserById,
   updateUser,
 } from "../controllers/users.controller";
-import { validateUser } from "../middleware/validateUser";
+import { validateUser } from "../middleware/validation/validateUser";
 import { upload } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
 import { protectAuth } from "../middleware/auth/protectAuth";

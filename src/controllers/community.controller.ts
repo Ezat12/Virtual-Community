@@ -24,6 +24,7 @@ export const createCommunity = expressAsyncHandler(
         description,
         avatarUrl: req.body.avatarUrl || null,
         createdBy: userId,
+        privacy: req.body.privacy || "public",
       })
       .returning();
 
@@ -62,6 +63,7 @@ export const getAllCommunities = expressAsyncHandler(
       name: Community.name,
       description: Community.description,
       createdBy: Community.createdBy,
+      privacy: Community.privacy,
     });
 
     const finalQuery = features
@@ -134,6 +136,7 @@ export const updateCommunity = expressAsyncHandler(
         avatarUrl: req.body?.avatarUrl
           ? req.body?.avatarUrl
           : community.avatarUrl,
+        privacy: req.body?.privacy || community.privacy,
       })
       .where(eq(Community.id, communityId))
       .returning();

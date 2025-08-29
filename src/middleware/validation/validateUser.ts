@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
-import { validationRegisterUserSchema } from "../validations/users.validation";
+import { validationRegisterUserSchema } from "../../validations/users.validation";
 import { string, ZodError } from "zod";
-import { db } from "../db";
-import { usersSchema } from "../schemas";
+import { db } from "../../db";
+import { usersSchema } from "../../schemas";
 import { eq } from "drizzle-orm";
-import { ApiError } from "../utils/apiError";
+import { ApiError } from "../../utils/apiError";
 
 export const validateUser = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {

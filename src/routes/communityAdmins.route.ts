@@ -1,5 +1,5 @@
 import express from "express";
-import { validateCommunityAdmin } from "../middleware/validateCommunityAdmin";
+import { validateCommunityAdmin } from "../middleware/validation/validateCommunityAdmin";
 import { protectAuth } from "../middleware/auth/protectAuth";
 import {
   addAdmin,

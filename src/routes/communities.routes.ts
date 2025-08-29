@@ -10,7 +10,12 @@ import {
 } from "../controllers/community.controller";
 import { upload } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
-import { validateCommunityCreated, validateCommunityUpdated } from "../middleware/validateCommunity";
+import {
+  validateCommunityCreated,
+  validateCommunityUpdated,
+} from "../middleware/validation/validateCommunity";
+
+import communityMemberShips from "./communityMemberShips.route";
 const router = express.Router();
 
 router
@@ -35,5 +40,7 @@ router
     updateCommunity
   )
   .delete(protectAuth, deleteCommunity);
+
+router.use("/:communityId/members", communityMemberShips);
 
 export default router;

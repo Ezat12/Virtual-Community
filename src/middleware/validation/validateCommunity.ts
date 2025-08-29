@@ -3,11 +3,11 @@ import expressAsyncHandler from "express-async-handler";
 import {
   validationCreateCommunity,
   validationUpdateCommunity,
-} from "../validations/community.validation";
-import { db } from "../db";
-import { communitiesSchema } from "../schemas";
+} from "../../validations/community.validation";
+import { db } from "../../db";
+import { communitiesSchema } from "../../schemas";
 import { eq } from "drizzle-orm";
-import { ApiError } from "../utils/apiError";
+import { ApiError } from "../../utils/apiError";
 import { ZodError } from "zod";
 
 export const validateCommunityCreated = expressAsyncHandler(

@@ -1,11 +1,14 @@
 import {
   integer,
+  pgEnum,
   pgTable,
   serial,
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
 import { usersSchema } from "./usersSchema";
+
+export const privacyEnum = pgEnum("privacy_community", ["private", "public"]);
 
 export const communitiesSchema = pgTable("communities", {
   id: serial().primaryKey(),
@@ -15,5 +18,6 @@ export const communitiesSchema = pgTable("communities", {
   createdBy: integer("created_by").references(() => usersSchema.id, {
     onDelete: "set null",
   }),
+  privacy: privacyEnum().default("public"),
   createdAt: timestamp("created_at").defaultNow(),
 });

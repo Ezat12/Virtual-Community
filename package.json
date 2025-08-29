@@ -6,7 +6,8 @@
   "scripts": {
     "start:dev": "ts-node-dev src/index.ts",
     "generate:db": "drizzle-kit generate",
-    "migrate:db": "drizzle-kit migrate"
+    "migrate:db": "drizzle-kit migrate",
+    "push:db": "drizzle-kit push"
   },
   "keywords": [],
   "author": "",

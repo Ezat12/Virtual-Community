@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
-import { communityAdminSchemaValidation } from "../validations/communityAdmin.validation";
+import { communityAdminSchemaValidation } from "../../validations/communityAdmin.validation";
 import { ZodError } from "zod";
-import { communityAdminsSchema, usersSchema } from "../schemas";
+import { communityAdminsSchema, usersSchema } from "../../schemas";
 import { and, eq } from "drizzle-orm";
-import { db } from "../db";
-import { ApiError } from "../utils/apiError";
+import { db } from "../../db";
+import { ApiError } from "../../utils/apiError";
 
 export const validateCommunityAdmin = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {

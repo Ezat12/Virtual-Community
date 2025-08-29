@@ -3,3 +3,5 @@ export * from "./emailVerifications";
 export * from "./forgetPassword";
 export * from "./communities";
 export * from "./communityAdmins";
+export * from "./communityMemberships";
+export * from "./joinRequests";
