@@ -3,6 +3,7 @@ import { protectAuth } from "../middleware/auth/protectAuth";
 import {
   deleteMemberByAdmin,
   getAllMembers,
+  getAuditLog,
   getPendingRequest,
   handleJoinRequest,
   joinCommunity,
@@ -24,5 +25,7 @@ router.get("/join-requests", getPendingRequest);
 router.patch("/join-requests/:requestId", handleJoinRequest);
 
 router.get("/members", getAllMembers);
+
+router.get("/audit-logs", getAuditLog);
 
 export default router;

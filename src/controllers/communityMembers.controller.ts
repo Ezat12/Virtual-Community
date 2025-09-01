@@ -8,8 +8,10 @@ import {
   joinRequestSchema as JoinRequest,
   usersSchema,
 } from "../schemas";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, SQL, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
+import { auditLogSchema } from "../schemas/auditLog";
+import { ApiFeatures } from "../utils/ApiFeatures";
 
 const IsAdminToManageUsers = async (communityId: number, id: number) => {
   const [isAdmin] = await db
@@ -75,6 +77,17 @@ export const joinCommunity = expressAsyncHandler(
           .where(eq(CommunityMemberShip.id, existingMember.id))
           .returning();
 
+        await db
+          .insert(auditLogSchema)
+          .values({
+            communityId: community.id,
+            actorId: userId,
+            targetId: userId,
+            action: "join",
+            visibility: "public",
+          })
+          .returning();
+
         return res.status(200).json({
           status: "success",
           message: "Welcome back to the community",
@@ -103,6 +116,17 @@ export const joinCommunity = expressAsyncHandler(
       const [communityMemberShip] = await db
         .insert(CommunityMemberShip)
         .values({ userId, communityId: community.id })
+        .returning();
+
+      await db
+        .insert(auditLogSchema)
+        .values({
+          communityId: community.id,
+          actorId: userId,
+          targetId: userId,
+          action: "join",
+          visibility: "public",
+        })
         .returning();
 
       return res.status(201).json({
@@ -161,6 +185,14 @@ export const leaveCommunity = expressAsyncHandler(
       )
       .returning();
 
+    await db.insert(auditLogSchema).values({
+      communityId: community.id,
+      actorId: userId,
+      targetId: userId,
+      action: "leave",
+      visibility: "public",
+    });
+
     res.status(200).json({
       status: "success",
       message: "Deleted member successfully",
@@ -218,6 +250,14 @@ export const deleteMemberByAdmin = expressAsyncHandler(
         )
       )
       .returning();
+
+    await db.insert(auditLogSchema).values({
+      communityId: community.id,
+      actorId: user.id,
+      targetId: member.id,
+      action: "remove",
+      visibility: "public",
+    });
 
     res.status(200).json({
       status: "success",
@@ -321,6 +361,22 @@ export const handleJoinRequest = expressAsyncHandler(
         userId: request.userId,
         communityId: community.id,
       });
+
+      await db.insert(auditLogSchema).values({
+        communityId: community.id,
+        actorId: user.id,
+        targetId: request.userId,
+        action: "accept",
+        visibility: "private",
+      });
+    } else {
+      await db.insert(auditLogSchema).values({
+        communityId: community.id,
+        actorId: user.id,
+        targetId: request.userId,
+        action: "reject",
+        visibility: "private",
+      });
     }
 
     res.status(200).json({ status: "success", data: request });
@@ -332,10 +388,15 @@ export const getAllMembers = expressAsyncHandler(
     const user = req.user;
     const { communityId } = req.params;
 
+    const parsedCommunityId = Number(communityId);
+    if (isNaN(parsedCommunityId)) {
+      return next(new ApiError("Invalid community ID", 400));
+    }
+
     const [community] = await db
       .select()
       .from(Community)
-      .where(eq(Community.id, Number(communityId)));
+      .where(eq(Community.id, parsedCommunityId));
 
     if (!community) {
       return next(new ApiError("Community not found", 404));
@@ -361,28 +422,64 @@ export const getAllMembers = expressAsyncHandler(
       }
     }
 
-    const allMembers = await db
-      .select({
-        idMember: CommunityMemberShip.id,
-        userId: CommunityMemberShip.userId,
-        userName: usersSchema.name,
-        userImage: usersSchema.avatarUrl,
-        userEmail: usersSchema.email,
-        userRole: sql<string>` CASE
-        WHEN ${community.createdBy} = ${usersSchema.id} THEN 'owner'
+    const columnMap = {
+      idMember: CommunityMemberShip.id,
+      userId: CommunityMemberShip.userId,
+      userName: usersSchema.name,
+      userImage: usersSchema.avatarUrl,
+      userEmail: usersSchema.email,
+      communityCreatedBy: Community.createdBy,
+      communityId: CommunityMemberShip.communityId,
+      userRole: sql<string>`CASE
+        WHEN ${Community.createdBy} = ${usersSchema.id} THEN 'owner'
         WHEN ${CommunityAdmins.userId} IS NOT NULL THEN 'admin'
         ELSE 'member'
       END`,
-      })
-      .from(CommunityMemberShip)
-      .innerJoin(usersSchema, eq(usersSchema.id, CommunityMemberShip.userId))
-      .leftJoin(
+    };
+
+    console.log("Query Params:", req.query);
+    const features = new ApiFeatures(
+      db,
+      CommunityMemberShip,
+      req.query,
+      columnMap
+    );
+
+    const finalQuery = features
+      .filter()
+      .sort()
+      .selectFields()
+      .paginate()
+      .join(
+        Community,
+        eq(Community.id, CommunityMemberShip.communityId),
+        "inner"
+      )
+      .join(
+        usersSchema,
+        eq(usersSchema.id, CommunityMemberShip.userId),
+        "inner"
+      )
+      .join(
         CommunityAdmins,
         and(
           eq(CommunityAdmins.userId, CommunityMemberShip.userId),
           eq(CommunityAdmins.communityId, community.id)
-        )
+        ) as SQL<unknown>,
+        "left"
       )
+      .build();
+
+    const allMembers = await finalQuery.where(
+      and(
+        eq(CommunityMemberShip.communityId, community.id),
+        isNull(CommunityMemberShip.removedAt)
+      )
+    );
+
+    const totalMembers = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(CommunityMemberShip)
       .where(
         and(
           eq(CommunityMemberShip.communityId, community.id),
@@ -392,7 +489,61 @@ export const getAllMembers = expressAsyncHandler(
 
     res.status(200).json({
       status: "success",
+      pagination: {
+        totalMembers: totalMembers[0].count,
+        totalPages: Math.ceil(
+          Number(totalMembers[0].count) / (Number(req.query.limit) || 10)
+        ),
+        currentPage: parseInt(req.query.page as string) || 1,
+      },
       data: allMembers,
     });
+  }
+);
+
+export const getAuditLog = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user;
+    const { communityId } = req.params;
+
+    const [community] = await db
+      .select()
+      .from(Community)
+      .where(eq(Community.id, Number(communityId)));
+
+    if (!community) {
+      return next(new ApiError("Community not found", 404));
+    }
+
+    const canManageUsers = await IsAdminToManageUsers(community.id, user.id);
+    const isOwner = community.createdBy === user.id;
+
+    let query = db
+      .select({
+        id: auditLogSchema.id,
+        action: auditLogSchema.action,
+        actorId: auditLogSchema.actorId,
+        actorName: usersSchema.name,
+        targetId: auditLogSchema.targetId,
+        targetName: sql<string>`(SELECT name FROM users WHERE id = ${auditLogSchema.targetId})`,
+        visibility: auditLogSchema.visibility,
+        createdAt: auditLogSchema.createdAt,
+      })
+      .from(auditLogSchema)
+      .innerJoin(usersSchema, eq(usersSchema.id, auditLogSchema.actorId))
+      .where(
+        and(
+          eq(auditLogSchema.communityId, community.id),
+          eq(
+            auditLogSchema.visibility,
+            !canManageUsers && !isOwner ? "public" : "private"
+          )
+        )
+      )
+      .orderBy(auditLogSchema.createdAt);
+
+    const logs = await query;
+
+    res.status(200).json({ status: "success", data: logs });
   }
 );
