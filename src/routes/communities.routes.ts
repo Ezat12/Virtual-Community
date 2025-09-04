@@ -8,7 +8,7 @@ import {
   getCommunityById,
   updateCommunity,
 } from "../controllers/community.controller";
-import { upload } from "../middleware/uploadMiddleware";
+import { uploadSingle } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
 import {
   validateCommunityCreated,
@@ -22,7 +22,7 @@ router
   .route("/")
   .post(
     protectAuth,
-    upload.single("avatarUrl"),
+    uploadSingle("avatarUrl"),
     validateCommunityCreated,
     uploadToCloudinary,
     createCommunity
@@ -34,7 +34,7 @@ router
   .get(getCommunityById)
   .put(
     protectAuth,
-    upload.single("avatarUrl"),
+    uploadSingle("avatarUrl"),
     validateCommunityUpdated,
     uploadToCloudinary,
     updateCommunity

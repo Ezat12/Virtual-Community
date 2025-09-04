@@ -46,76 +46,57 @@ export class ApiFeatures<T> {
     const queryObj = { ...this.queryParams };
     excluded.forEach((f) => delete queryObj[f]);
 
-    console.log("Processing query params:", queryObj); // Debug log
-
     Object.entries(queryObj).forEach(([key, value]) => {
       if (typeof value !== "string") {
-        console.log(`Skipping non-string param: ${key}=${value}`); // Debug log
         return;
       }
 
       const column = this.columnMap[key];
       if (!column) {
-        console.log(`Skipping unknown column: ${key}`); // Debug log
         return;
       }
-
-      console.log(`Processing filter for ${key}=${value}`); // Debug log
 
       if (key === "userRole") {
         if (value === "owner") {
           this.filters.push(
             sql`${this.columnMap.communityCreatedBy} = ${this.columnMap.userId}`
           );
-          console.log("Added filter for userRole=owner"); // Debug log
         } else if (value === "admin") {
           this.filters.push(sql`EXISTS (
             SELECT 1 FROM community_admins 
             WHERE community_admins.user_id = ${this.columnMap.userId} 
             AND community_admins.community_id = ${this.columnMap.communityId}
           )`);
-          console.log("Added filter for userRole=admin"); // Debug log
         } else if (value === "member") {
           this.filters.push(sql`NOT EXISTS (
             SELECT 1 FROM community_admins 
             WHERE community_admins.user_id = ${this.columnMap.userId} 
             AND community_admins.community_id = ${this.columnMap.communityId}
           )`);
-          console.log("Added filter for userRole=member"); // Debug log
         } else {
-          console.log(`Invalid userRole value: ${value}`); // Debug log
         }
       } else if (column instanceof PgColumn) {
         if (key === "userName" || key === "userEmail") {
           this.filters.push(sql`${column} ILIKE ${`%${value}%`}`);
-          console.log(`Added ILIKE filter for ${key}=${value}`); // Debug log
         } else if (value.startsWith("gte:")) {
           this.filters.push(sql`${column} >= ${value.slice(4)}`);
-          console.log(`Added gte filter for ${key}=${value}`); // Debug log
         } else if (value.startsWith("lte:")) {
           this.filters.push(sql`${column} <= ${value.slice(4)}`);
-          console.log(`Added lte filter for ${key}=${value}`); // Debug log
         } else if (value.startsWith("gt:")) {
           this.filters.push(sql`${column} > ${value.slice(3)}`);
-          console.log(`Added gt filter for ${key}=${value}`); // Debug log
         } else if (value.startsWith("lt:")) {
           this.filters.push(sql`${column} < ${value.slice(3)}`);
-          console.log(`Added lt filter for ${key}=${value}`); // Debug log
         } else if (value.includes(",")) {
           const values = value.split(",");
           this.filters.push(sql`${column} IN (${values})`);
-          console.log(`Added IN filter for ${key}=${value}`); // Debug log
         } else {
           this.filters.push(eq(column, value));
-          console.log(`Added eq filter for ${key}=${value}`); // Debug log
         }
       } else {
         this.filters.push(sql`${column} = ${value}`);
-        console.log(`Added SQL filter for ${key}=${value}`); // Debug log
       }
     });
 
-    console.log("Final filters:", this.filters); // Debug log
     return this;
   }
 

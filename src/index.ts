@@ -6,7 +6,8 @@ import { ApiError } from "./utils/apiError";
 import userRoute from "./routes/user.route";
 import authRoute from "./routes/auth.route";
 import communityRoute from "./routes/communities.routes";
-import communityAdmin from "./routes/communityAdmins.route";
+import communityAdminRoute from "./routes/communityAdmins.route";
+import postsRoute from "./routes/post.route";
 
 import path from "path";
 const app = express();
@@ -25,7 +26,8 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/v1/users", userRoute);
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/communities", communityRoute);
-app.use("/api/v1/community-admin", communityAdmin);
+app.use("/api/v1/community-admin", communityAdminRoute);
+app.use("/api/v1/posts", postsRoute);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new ApiError("route is not success", 404));

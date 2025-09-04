@@ -1,6 +1,6 @@
 import express from "express";
 import { validateUser } from "../middleware/validation/validateUser";
-import { upload } from "../middleware/uploadMiddleware";
+import { uploadMultiple, uploadSingle } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
 import {
   forgetPassword,
@@ -17,7 +17,7 @@ const router = express.Router();
 
 router
   .route("/signup")
-  .post(upload.single("avatarUrl"), validateUser, uploadToCloudinary, signup);
+  .post(uploadSingle("avatarUrl"), validateUser, uploadToCloudinary, signup);
 
 router.route("/login").post(login);
 

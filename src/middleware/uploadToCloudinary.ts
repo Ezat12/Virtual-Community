@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import { Request, Response, NextFunction } from "express";
 import streamifier from "streamifier";
+import { uuidv4 } from "zod";
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -14,26 +15,78 @@ export const uploadToCloudinary = async (
   next: NextFunction
 ) => {
   try {
-    if (!req.file) return next();
+    const files = Array.isArray(req.files)
+      ? req.files
+      : req.file
+      ? [req.file]
+      : undefined;
 
-    const streamUpload = () =>
-      new Promise<{ secure_url: string }>((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { resource_type: "image" },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result as { secure_url: string });
-          }
-        );
-        streamifier.createReadStream(req.file.buffer).pipe(stream);
-      });
+    if (!files || files.length === 0) {
+      req.body.media = [];
+      req.body.avatarUrl = null;
+      return next();
+    }
 
-    const result = await streamUpload();
+    if (files.length === 1) {
+      const file = files[0];
+      if (!file.mimetype.startsWith("image/")) {
+        return res
+          .status(400)
+          .json({ status: "error", error: "Profile picture must be an image" });
+      }
 
-    req.body.avatarUrl = result.secure_url;
+      const result = await new Promise<{ secure_url: string }>(
+        (resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { resource_type: "image", public_id: `profile_${uuidv4()}` },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result as { secure_url: string });
+            }
+          );
+          streamifier.createReadStream(file.buffer).pipe(stream);
+        }
+      );
+
+      req.body.avatarUrl = result.secure_url;
+      req.body.media = [];
+      return next();
+    }
+
+    const uploadPromises = files.map((file, index) => {
+      return new Promise<{ secure_url: string; type: "image" | "video" }>(
+        (resolve, reject) => {
+          const resourceType = file.mimetype.startsWith("image/")
+            ? "image"
+            : "video";
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              resource_type: resourceType,
+              public_id: `post_media_${uuidv4()}`,
+            },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve({
+                secure_url: result!.secure_url,
+                type: resourceType,
+              });
+            }
+          );
+          streamifier.createReadStream(file.buffer).pipe(stream);
+        }
+      );
+    });
+
+    const results = await Promise.all(uploadPromises);
+    req.body.media = results.map((result, index) => ({
+      url: result.secure_url,
+      type: result.type,
+      order: index + 1,
+    }));
+    req.body.avatarUrl = null;
     next();
   } catch (e) {
-    console.log(e);
-    res.status(500).json({ status: "error", error: "Image upload failed" });
+    console.error(e);
+    res.status(500).json({ status: "error", error: "Media upload failed" });
   }
 };

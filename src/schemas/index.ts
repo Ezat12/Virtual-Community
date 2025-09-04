@@ -5,3 +5,5 @@ export * from "./communities";
 export * from "./communityAdmins";
 export * from "./communityMemberships";
 export * from "./joinRequests";
+export * from "./posts";
+export * from "./postMedia";

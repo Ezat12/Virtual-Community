@@ -7,7 +7,7 @@ import {
   updateUser,
 } from "../controllers/users.controller";
 import { validateUser } from "../middleware/validation/validateUser";
-import { upload } from "../middleware/uploadMiddleware";
+import { uploadSingle } from "../middleware/uploadMiddleware";
 import { uploadToCloudinary } from "../middleware/uploadToCloudinary";
 import { protectAuth } from "../middleware/auth/protectAuth";
 // import { protectAuth } from "../controllers/auth.controller";
@@ -15,12 +15,7 @@ const router = express.Router();
 
 router
   .route("/")
-  .post(
-    upload.single("avatarUrl"),
-    uploadToCloudinary,
-    validateUser,
-    createUser
-  )
+  .post(uploadSingle("avatarUrl"), uploadToCloudinary, validateUser, createUser)
   .get(protectAuth, getAllUser);
 router.route("/:id").get(getUserById).put(updateUser).delete(deleteUser);
 

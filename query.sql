@@ -13,5 +13,5 @@
 -- DELETE FROM community_memberships ;
 -- DELETE FROM community_admins;
 -- DELETE FROM audit_logs;
-SELECT * FROM audit_logs;
--- DELETE FROM audit_logs WHERE id = 2;
+SELECT * FROM posts;
+-- DELETE FROM posts WHERE id = 1;
