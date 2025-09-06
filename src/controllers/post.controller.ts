@@ -8,6 +8,7 @@ import {
   postsSchema as Post,
   usersSchema as User,
   postMediaSchema as PostMedia,
+  mentionsSchema,
 } from "../schemas";
 import { ApiError } from "../utils/apiError";
 import { ApiFeatures } from "../utils/ApiFeatures";
@@ -68,12 +69,33 @@ export const createPost = expressAsyncHandler(
       }
     }
 
+    let mentions: { postId: number; userId: number }[] = [];
+    if (req.body.mentions && req.body.mentions.length > 0) {
+      try {
+        const mentionsValues = (req.body.mentions as number[]).map(
+          (userId) => ({
+            postId: post.id,
+            userId,
+          })
+        );
+
+        mentions = await db
+          .insert(mentionsSchema)
+          .values(mentionsValues)
+          .returning();
+      } catch (e) {
+        await db.delete(Post).where(eq(Post.id, post.id));
+        return next(new ApiError("Failed to add mentions to post", 500));
+      }
+    }
+
     res.status(201).json({
       status: "success",
       message: "Created Post successfully",
       data: {
         post,
         media: mediaAll,
+        mentions,
       },
     });
   }
@@ -155,6 +177,7 @@ export const getAllPosts = expressAsyncHandler(
 
     const postIds = posts.map((post) => post.id);
 
+    // === Get Media
     const media = await db
       .select({
         mediaId: PostMedia.id,
@@ -167,7 +190,21 @@ export const getAllPosts = expressAsyncHandler(
       .where(inArray(PostMedia.postId, postIds))
       .orderBy(PostMedia.order);
 
-    const postsWithMedia = posts.map((post) => ({
+    // === Get Mentions
+    const mentions = await db
+      .select({
+        mentionId: mentionsSchema.id,
+        postId: mentionsSchema.postId,
+        userId: mentionsSchema.userId,
+        username: User.name,
+        avatarUrl: User.avatarUrl,
+      })
+      .from(mentionsSchema)
+      .leftJoin(User, eq(User.id, mentionsSchema.userId))
+      .where(inArray(mentionsSchema.postId, postIds));
+
+    // === Merge Media + Mentions with Posts
+    const postsWithExtras = posts.map((post) => ({
       ...post,
       media: media
         .filter((m) => m.postId === post.id)
@@ -177,17 +214,25 @@ export const getAllPosts = expressAsyncHandler(
           mediaType: m.mediaType,
           mediaOrder: m.mediaOrder,
         })),
+      mentions: mentions
+        .filter((mn) => mn.postId === post.id)
+        .map((mn) => ({
+          mentionId: mn.mentionId,
+          userId: mn.userId,
+          username: mn.username,
+          avatarUrl: mn.avatarUrl,
+        })),
     }));
 
     res.status(200).json({
       status: "success",
-      results: postsWithMedia.length,
+      results: postsWithExtras.length,
       totalCount: Number(totalCount.count),
       currentPage: parseInt(req.query.page as string) || 1,
       totalPages: Math.ceil(
         Number(totalCount.count) / (Number(req.query.limit) || 10)
       ),
-      data: { posts: postsWithMedia },
+      data: { posts: postsWithExtras },
     });
   }
 );

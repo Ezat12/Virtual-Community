@@ -5,8 +5,9 @@ import {
   communityAdminsSchema,
   communityMembershipsSchema,
   postsSchema,
+  usersSchema,
 } from "../../schemas";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { postValidationSchema } from "../../validations/post.validation";
 import { ApiError } from "../../utils/apiError";
@@ -42,7 +43,28 @@ export const validatePostCreated = expressAsyncHandler(
         );
       }
 
+      const mentionsToNumber = (req.body.mentions as string[]).map((id) =>
+        Number(id)
+      );
+      const setMentions = new Set<number>(mentionsToNumber);
+
+      const mentions: number[] = [...setMentions];
+
+      if (mentions.length > 0) {
+        const users = await db
+          .select()
+          .from(usersSchema)
+          .where(inArray(usersSchema.id, mentions));
+
+        if (users.length !== mentions.length) {
+          return next(
+            new ApiError("One or more users not found in this mentions", 404)
+          );
+        }
+      }
+
       req.body = validateData;
+      req.body.mentions = mentions;
       req.community = community;
       next();
     } catch (e) {

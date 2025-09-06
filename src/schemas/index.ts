@@ -7,3 +7,4 @@ export * from "./communityMemberships";
 export * from "./joinRequests";
 export * from "./posts";
 export * from "./postMedia";
+export * from "./mentions";
