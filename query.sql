@@ -13,5 +13,5 @@
 -- DELETE FROM community_memberships ;
 -- DELETE FROM community_admins;
 -- DELETE FROM audit_logs;
--- SELECT * FROM mentions;
+SELECT * FROM likes;
 -- DELETE FROM mentions WHERE id = 1;
