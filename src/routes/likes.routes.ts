@@ -1,7 +1,9 @@
 import express from "express";
 import {
+  addLikeToComment,
   addReaction,
-  getAllLikes,
+  getAllLikesToPost,
+  getAllLikeToComment,
   getLike,
   removeLike,
   updateReaction,
@@ -11,7 +13,12 @@ const router = express.Router();
 
 router.use(protectAuth);
 
-router.route("/:postId/reactions").post(addReaction).get(getAllLikes);
+router.route("/:postId/reactions").post(addReaction).get(getAllLikesToPost);
 router.route("/:likeId").get(getLike).patch(updateReaction).delete(removeLike);
+
+router
+  .route("/comment/:commentId")
+  .post(addLikeToComment)
+  .get(getAllLikeToComment);
 
 export default router;

@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
 import { db } from "../db";
-import { postsSchema as Post, usersSchema as User } from "../schemas";
+import {
+  commentsSchema as Comments,
+  postsSchema as Post,
+  usersSchema as User,
+} from "../schemas";
 import { and, eq, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
 import { likesSchema as Like } from "../schemas/likes";
@@ -11,7 +15,7 @@ export const addReaction = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { postId } = req.params;
     const user = req.user;
-    const reaction = req.body.reaction;
+    const reaction = req.body?.reaction;
 
     if (
       !reaction ||
@@ -128,7 +132,7 @@ export const getLike = expressAsyncHandler(
   }
 );
 
-export const getAllLikes = expressAsyncHandler(
+export const getAllLikesToPost = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { postId } = req.params;
 
@@ -141,7 +145,9 @@ export const getAllLikes = expressAsyncHandler(
       return next(new ApiError("Post not found", 404));
     }
 
-    const features = new ApiFeatures(db, Like, req.query, {
+    const query = { ...req.query, postId: post.id.toString() };
+
+    const features = new ApiFeatures(db, Like, query, {
       likeId: Like.id,
       reaction: Like.reactions,
       createdAt: Like.createdAt,
@@ -176,5 +182,96 @@ export const getAllLikes = expressAsyncHandler(
       ),
       data: result,
     });
+  }
+);
+
+export const addLikeToComment = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user;
+    const { commentId } = req.params;
+
+    const reaction = req.body?.reaction;
+
+    if (
+      !reaction ||
+      !["like", "love", "haha", "wow", "sad", "angry"].includes(reaction)
+    ) {
+      return next(new ApiError("Please provide valid reaction", 400));
+    }
+
+    const [comment] = await db
+      .select()
+      .from(Comments)
+      .where(eq(Comments.id, Number(commentId)));
+
+    if (!comment) {
+      return next(new ApiError("Comment not found", 404));
+    }
+
+    const [existLike] = await db
+      .select()
+      .from(Like)
+      .where(and(eq(Like.commentId, comment.id), eq(Like.userId, user.id)));
+    
+    console.log(existLike)
+
+    if (existLike) {
+      const [updateLike] = await db
+        .update(Like)
+        .set({ reactions: reaction })
+        .returning();
+
+      res.status(200).json({ status: "success", data: updateLike });
+    } else {
+      const [newLike] = await db
+        .insert(Like)
+        .values({
+          postId: comment.postId,
+          userId: user.id,
+          commentId: comment.id,
+        })
+        .returning();
+
+      const [updateCountCommentLike] = await db
+        .update(Comments)
+        .set({ likesCount: comment.likesCount + 1 })
+        .returning();
+
+      res.status(201).json({
+        status: "success",
+        message: "Successfully added comment",
+        like: newLike,
+        comment: updateCountCommentLike,
+      });
+    }
+  }
+);
+
+export const getAllLikeToComment = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { commentId } = req.params;
+
+    const [comment] = await db
+      .select()
+      .from(Comments)
+      .where(eq(Comments.id, Number(commentId)));
+
+    if (!comment) {
+      return next(new ApiError("Comment not found", 404));
+    }
+
+    const getAll = await db
+      .select({
+        commentId: Comments.id,
+        userId: User.id,
+        username: User.name,
+        userAvatar: User.avatarUrl,
+        createdAt: Comments.createdAt,
+      })
+      .from(Comments)
+      .where(eq(Comments.id, Number(commentId)))
+      .leftJoin(User, eq(User.id, Comments.userId));
+
+    res.status(200).json({ status: "success", data: getAll });
   }
 );

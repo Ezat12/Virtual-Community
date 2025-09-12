@@ -214,7 +214,10 @@ export const getAllAdmins = expressAsyncHandler(
     //   .from(CommunityAdmin)
     //   .innerJoin(User, eq(CommunityAdmin.userId, User.id));
 
-    const features = new ApiFeatures(db, CommunityAdmin, req.query, {
+    const query = { ...req.query, communityId };
+    // req.query = query;
+
+    const features = new ApiFeatures(db, CommunityAdmin, query, {
       idCommunityAdmin: CommunityAdmin.id,
       adminId: CommunityAdmin.userId,
       communityId: CommunityAdmin.communityId,

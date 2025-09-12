@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
 import { communityAdminSchemaValidation } from "../../validations/communityAdmin.validation";
 import { ZodError } from "zod";
-import { communityAdminsSchema, usersSchema } from "../../schemas";
+import {
+  communityAdminsSchema,
+  communityMembershipsSchema,
+  usersSchema,
+} from "../../schemas";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { ApiError } from "../../utils/apiError";
@@ -23,6 +27,20 @@ export const validateCommunityAdmin = expressAsyncHandler(
 
       if (!user) {
         return next(new ApiError("User not found", 404));
+      }
+
+      const [existingMemberInCommunity] = await db
+        .select()
+        .from(communityMembershipsSchema)
+        .where(
+          and(
+            eq(communityMembershipsSchema.userId, user.id),
+            eq(communityMembershipsSchema.communityId, validateData.communityId)
+          )
+        );
+
+      if (!existingMemberInCommunity) {
+        return next(new ApiError("User is not a member of the community", 400));
       }
 
       next();

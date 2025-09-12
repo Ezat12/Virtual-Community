@@ -30,23 +30,6 @@ export const validateJoinRequest = expressAsyncHandler(
         return next(new ApiError("Community not found", 404));
       }
 
-      // Check if already a member
-      const [existingMembership] = await db
-        .select()
-        .from(communityMembershipsSchema)
-        .where(
-          and(
-            eq(communityMembershipsSchema.communityId, community.id),
-            eq(communityMembershipsSchema.userId, userId)
-          )
-        );
-
-      if (existingMembership) {
-        return next(
-          new ApiError("You are already a member in this community", 400)
-        );
-      }
-
       // Check if already has pending request
       const [existingRequest] = await db
         .select()

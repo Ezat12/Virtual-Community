@@ -43,7 +43,7 @@ export const validatePostCreated = expressAsyncHandler(
         );
       }
 
-      const mentionsToNumber = (req.body.mentions as string[]).map((id) =>
+      const mentionsToNumber = (req.body.mentions as string[])?.map((id) =>
         Number(id)
       );
       const setMentions = new Set<number>(mentionsToNumber);
@@ -86,9 +86,11 @@ export const validatePostCreated = expressAsyncHandler(
         res.status(400).json({ status: "error", errors });
       }
 
+      console.log(e);
+
       res
         .status(500)
-        .json({ status: "error", message: "Something went wrong" });
+        .json({ status: "error", message: "Something went wrong", error: e });
     }
   }
 );

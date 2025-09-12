@@ -30,7 +30,7 @@ router
   .get(getAllCommunities);
 
 router
-  .route("/:id")
+  .route("/:communityId")
   .get(getCommunityById)
   .put(
     protectAuth,

@@ -27,6 +27,6 @@ export const postsSchema = pgTable("posts", {
   content: text(),
   type: postTypeEnum().notNull().default("text"),
   createdAt: timestamp("created_at").defaultNow(),
-  updateAt: timestamp("updated_at"),
+  updateAt: timestamp("updated_at").$onUpdate(() => new Date()),
   deletedAt: timestamp("deleted_at"),
 });

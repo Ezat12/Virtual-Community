@@ -12,6 +12,7 @@ import { and, eq, isNull, SQL, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
 import { auditLogSchema } from "../schemas/auditLog";
 import { ApiFeatures } from "../utils/ApiFeatures";
+import { join } from "path";
 
 const IsAdminToManageUsers = async (communityId: number, id: number) => {
   const [isAdmin] = await db
@@ -49,7 +50,7 @@ export const joinCommunity = expressAsyncHandler(
 
     // Check if user had membership before
     if (existingMember) {
-      if (existingMember.removedAt === null) {
+      if (!existingMember.removedAt) {
         return next(new ApiError("You are already a member", 400));
       }
 
@@ -341,6 +342,29 @@ export const handleJoinRequest = expressAsyncHandler(
       );
     }
 
+    const [requestMember] = await db
+      .select()
+      .from(JoinRequest)
+      .where(eq(JoinRequest.id, Number(requestId)));
+
+    if (!requestMember) {
+      return next(new ApiError("Request not found", 404));
+    }
+    const [existingMember] = await db
+      .select()
+      .from(CommunityMemberShip)
+      .where(
+        and(
+          eq(CommunityMemberShip.userId, Number(requestMember.userId)),
+          eq(CommunityMemberShip.communityId, community.id)
+        )
+      );
+
+    if (existingMember) {
+      return next(
+        new ApiError("User is already a member of the community", 400)
+      );
+    }
     const [request] = await db
       .update(JoinRequest)
       .set({ status: action })
@@ -367,7 +391,7 @@ export const handleJoinRequest = expressAsyncHandler(
         actorId: user.id,
         targetId: request.userId,
         action: "accept",
-        visibility: "private",
+        visibility: "public",
       });
     } else {
       await db.insert(auditLogSchema).values({
@@ -378,6 +402,8 @@ export const handleJoinRequest = expressAsyncHandler(
         visibility: "private",
       });
     }
+
+    await db.delete(JoinRequest).where(eq(JoinRequest.id, Number(requestId)));
 
     res.status(200).json({ status: "success", data: request });
   }

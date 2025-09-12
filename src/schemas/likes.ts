@@ -7,6 +7,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { postsSchema } from "./posts";
 import { usersSchema } from "./usersSchema";
+import { commentsSchema } from "./comments";
 
 export const reactionsEnum = pgEnum("reaction_like", [
   "like",
@@ -25,7 +26,9 @@ export const likesSchema = pgTable("likes", {
   userId: integer("user_id").references(() => usersSchema.id, {
     onDelete: "cascade",
   }),
-  // commentId : integer("comment_id").references()
+  commentId: integer("comment_id").references(() => commentsSchema.id, {
+    onDelete: "cascade",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
   reactions: reactionsEnum().default("like").notNull(),
 });

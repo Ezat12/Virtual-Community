@@ -1,27 +1,31 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
-import {
-  validationCreateCommunity,
-  validationUpdateCommunity,
-} from "../../validations/community.validation";
+import { validationAddComment } from "../../validations/comment.validation";
 import { db } from "../../db";
-import { communitiesSchema, communityAdminsSchema } from "../../schemas";
+import {
+  commentsSchema,
+  communitiesSchema,
+  communityAdminsSchema,
+  postsSchema,
+} from "../../schemas";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../../utils/apiError";
 import { ZodError } from "zod";
 
-export const validateCommunityCreated = expressAsyncHandler(
+export const validateComment = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const validateData = await validationCreateCommunity.parseAsync(req.body);
+      const validateData = await validationAddComment.parseAsync(req.body);
 
-      const [community] = await db
+      console.log(req.params.postId);
+
+      const [comment] = await db
         .select()
-        .from(communitiesSchema)
-        .where(eq(communitiesSchema.name, validateData.name));
+        .from(commentsSchema)
+        .where(eq(commentsSchema.id, Number(req.params.commentId)));
 
-      if (community) {
-        return next(new ApiError("Community is exists", 400));
+      if (!comment) {
+        return next(new ApiError("Comment not found", 404));
       }
 
       req.body = validateData;
@@ -45,6 +49,8 @@ export const validateCommunityCreated = expressAsyncHandler(
 
         res.status(400).json({ status: "error", errors });
       }
+
+      console.log(e);
 
       res
         .status(500)
@@ -53,63 +59,67 @@ export const validateCommunityCreated = expressAsyncHandler(
   }
 );
 
-export const validateCommunityUpdated = expressAsyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const validateDeleteComment = expressAsyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const validateData = await validationUpdateCommunity.parseAsync(req.body);
+      const { commentId } = req.params;
       const user = req.user;
+
+      const [comment] = await db
+        .select()
+        .from(commentsSchema)
+        .where(eq(commentsSchema.id, Number(commentId)));
+
+      if (!comment) {
+        return next(new ApiError("Comment not found", 404));
+      }
+
+      const postId = comment.postId;
+
+      const [post] = await db
+        .select()
+        .from(postsSchema)
+        .where(eq(postsSchema.id, postId));
+
+      if (!post) {
+        return next(new ApiError("Post not found", 404));
+      }
+
+      const communityId = post.communityId;
 
       const [community] = await db
         .select()
         .from(communitiesSchema)
-        .where(eq(communitiesSchema.id, Number(req.params.communityId)));
+        .where(eq(communitiesSchema.id, communityId));
 
       if (!community) {
         return next(new ApiError("Community not found", 404));
       }
 
-      const [communityByName] = await db
-        .select()
-        .from(communitiesSchema)
-        .where(eq(communitiesSchema.name, validateData.name ?? ""));
-
-      if (communityByName && communityByName.id !== community.id) {
-        return next(new ApiError("Community already exists", 400));
-      }
-
-      const isAllowedToUpdate = await db
+      const [checkAdmin] = await db
         .select()
         .from(communityAdminsSchema)
         .where(
           and(
             eq(communityAdminsSchema.communityId, community.id),
             eq(communityAdminsSchema.userId, user.id),
-            eq(communityAdminsSchema.permissions, ["edit_settings"])
+            eq(communityAdminsSchema.permissions, ["manage_posts"])
           )
-        )
-        .then((rows) => rows.length > 0);
-
-      console.log(isAllowedToUpdate);
-      console.log(!isAllowedToUpdate);
-
-      console.log(community.createdBy !== user.id);
+        );
 
       if (
-        !isAllowedToUpdate &&
-        community.createdBy !== user.id &&
-        user.role !== "admin"
+        !checkAdmin &&
+        comment.userId !== user.id &&
+        community.createdBy !== user.id
       ) {
         return next(
-          new ApiError("You are not authorized to update this community", 403)
+          new ApiError("You are not authorized to delete this comment", 403)
         );
       }
-
-      req.body = validateData;
 
       next();
     } catch (e) {
       if (e instanceof ZodError) {
-        console.log(e);
         const uniqueErrors: Record<string, string> = {};
 
         e.issues.forEach((err) => {
@@ -126,7 +136,6 @@ export const validateCommunityUpdated = expressAsyncHandler(
 
         res.status(400).json({ status: "error", errors });
       }
-      console.log(e);
 
       res
         .status(500)

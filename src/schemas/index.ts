@@ -8,3 +8,5 @@ export * from "./joinRequests";
 export * from "./posts";
 export * from "./postMedia";
 export * from "./mentions";
+export * from "./likes";
+export * from "./comments";

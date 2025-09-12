@@ -47,7 +47,7 @@ export const createCommunity = expressAsyncHandler(
 
 export const getCommunityById = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const communityId = Number(req.params.id);
+    const communityId = Number(req.params.communityId);
 
     const [community] = await db
       .select()
@@ -104,7 +104,7 @@ export const getAllCommunities = expressAsyncHandler(
 export const updateCommunity = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user.id;
-    const communityId = Number(req.params.id);
+    const communityId = Number(req.params.communityId);
 
     const [community] = await db
       .select()
@@ -115,25 +115,25 @@ export const updateCommunity = expressAsyncHandler(
       return next(new ApiError("Community not found", 404));
     }
 
-    const admins = await db
-      .select()
-      .from(CommunityAdmin)
-      .where(eq(CommunityAdmin.communityId, community.id));
+    // const admins = await db
+    //   .select()
+    //   .from(CommunityAdmin)
+    //   .where(eq(CommunityAdmin.communityId, community.id));
 
-    const checkUserIsAllowed = admins.some(
-      (admin) =>
-        admin.userId === userId && admin.permissions.includes("edit_settings")
-    );
+    // const checkUserIsAllowed = admins.some(
+    //   (admin) =>
+    //     admin.userId === userId && admin.permissions.includes("edit_settings")
+    // );
 
-    if (
-      community.createdBy !== userId &&
-      req.user.role !== "admin" &&
-      checkUserIsAllowed
-    ) {
-      return next(
-        new ApiError("You are not authorized to update this community", 403)
-      );
-    }
+    // if (
+    //   community.createdBy !== userId &&
+    //   req.user.role !== "admin" &&
+    //   checkUserIsAllowed
+    // ) {
+    //   return next(
+    //     new ApiError("You are not authorized to update this community", 403)
+    //   );
+    // }
 
     const updatedCommunity = await db
       .update(Community)
@@ -161,7 +161,7 @@ export const updateCommunity = expressAsyncHandler(
 export const deleteCommunity = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user.id;
-    const communityId = Number(req.params.id);
+    const communityId = Number(req.params.communityId);
 
     const [community] = await db
       .select()
