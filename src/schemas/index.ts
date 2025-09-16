@@ -10,3 +10,4 @@ export * from "./postMedia";
 export * from "./mentions";
 export * from "./likes";
 export * from "./comments";
+export * from "./messageCommunity";

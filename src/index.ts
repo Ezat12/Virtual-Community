@@ -10,6 +10,7 @@ import communityAdminRoute from "./routes/communityAdmins.route";
 import postsRoute from "./routes/post.route";
 import likesRoutes from "./routes/likes.routes";
 import commentsRoutes from "./routes/comment.route";
+import messageCommunityRoutes from "./routes/messageCommunity.route";
 
 import path from "path";
 const app = express();
@@ -32,6 +33,7 @@ app.use("/api/v1/community-admin", communityAdminRoute);
 app.use("/api/v1/posts", postsRoute);
 app.use("/api/v1/likes", likesRoutes);
 app.use("/api/v1/comments", commentsRoutes);
+app.use("/api/v1/message-community", messageCommunityRoutes);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new ApiError("route is not success", 404));
