@@ -21,7 +21,7 @@ export const messageCommunitySchema = pgTable(
     communityId: integer("community_id")
       .references(() => communitiesSchema.id, { onDelete: "cascade" })
       .notNull(),
-    content: varchar("content", { length: 150 }).notNull(),
+    content: varchar("content", { length: 500 }).notNull(),
     isEdited: boolean("is_edited").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

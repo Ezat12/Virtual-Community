@@ -7,7 +7,7 @@ export const sendMessageToCommunityValidation = z.object({
   content: z
     .string({ error: "Content must be required" })
     .nonempty("Content must be required")
-    .max(150, { message: "Content must be at most 150 characters" }),
+    .max(500, { message: "Content must be at most 500 characters" }),
 });
 
 export const updateMessageToCommunityValidation = z.object({
