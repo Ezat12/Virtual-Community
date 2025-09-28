@@ -10,6 +10,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
 import { likesSchema as Like } from "../schemas/likes";
 import { ApiFeatures } from "../utils/ApiFeatures";
+import { NotificationService } from "../utils/notificationService";
 
 export const addReaction = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -41,6 +42,8 @@ export const addReaction = expressAsyncHandler(
         reactions: reaction ?? "like",
       })
       .returning();
+
+    await NotificationService.likedPost(user.id, user.name);
 
     res.status(201).json({ status: "success", data: newLike });
   }
@@ -97,6 +100,8 @@ export const updateReaction = expressAsyncHandler(
     if (!updateReaction) {
       return next(new ApiError("User not add reaction in this post", 400));
     }
+
+    await NotificationService.likedPost(user.id, user.name);
 
     res.status(200).json({
       status: "success",
@@ -212,8 +217,8 @@ export const addLikeToComment = expressAsyncHandler(
       .select()
       .from(Like)
       .where(and(eq(Like.commentId, comment.id), eq(Like.userId, user.id)));
-    
-    console.log(existLike)
+
+    console.log(existLike);
 
     if (existLike) {
       const [updateLike] = await db
@@ -236,6 +241,8 @@ export const addLikeToComment = expressAsyncHandler(
         .update(Comments)
         .set({ likesCount: comment.likesCount + 1 })
         .returning();
+
+      await NotificationService.likedComment(user.id, user.name);
 
       res.status(201).json({
         status: "success",

@@ -12,6 +12,7 @@ import {
 } from "../schemas";
 import { ApiError } from "../utils/apiError";
 import { ApiFeatures } from "../utils/ApiFeatures";
+import { NotificationService } from "../utils/notificationService";
 
 export const createPost = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -83,6 +84,12 @@ export const createPost = expressAsyncHandler(
           .insert(mentionsSchema)
           .values(mentionsValues)
           .returning();
+
+        await Promise.all(
+          req.body.mentions.map((userId: number) =>
+            NotificationService.mentioned(userId, user.name)
+          )
+        );
       } catch (e) {
         await db.delete(Post).where(eq(Post.id, post.id));
         return next(new ApiError("Failed to add mentions to post", 500));

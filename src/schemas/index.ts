@@ -11,3 +11,5 @@ export * from "./mentions";
 export * from "./likes";
 export * from "./comments";
 export * from "./messageCommunity";
+export * from "./messagePrivate";
+export * from "./notification";

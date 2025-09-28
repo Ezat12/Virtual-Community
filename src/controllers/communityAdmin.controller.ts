@@ -9,6 +9,7 @@ import {
 } from "../schemas";
 import { and, eq, sql } from "drizzle-orm";
 import { ApiFeatures } from "../utils/ApiFeatures";
+import { NotificationService } from "../utils/notificationService";
 
 export const addAdmin = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -63,6 +64,8 @@ export const addAdmin = expressAsyncHandler(
         permissions: permissions?.length ? permissions : ["manage_posts"],
       })
       .returning();
+
+    await NotificationService.promotedToAdmin(userAdmin, community.name);
 
     res.status(201).json({
       status: "success",
@@ -130,6 +133,11 @@ export const updateCommunityAdmin = expressAsyncHandler(
       )
       .returning();
 
+    await NotificationService.updatedAdminPermissions(
+      userAdmin,
+      community.name
+    );
+
     res.status(200).json({
       status: "success",
       message: "Updated admin successfully",
@@ -176,6 +184,8 @@ export const deleteAdmin = expressAsyncHandler(
           eq(CommunityAdmin.communityId, communityId)
         )
       );
+
+    await NotificationService.demotedFromAdmin(userAdmin, community.name);
 
     res
       .status(200)

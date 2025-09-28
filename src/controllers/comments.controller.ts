@@ -6,6 +6,7 @@ import { and, eq, or, sql } from "drizzle-orm";
 import { ApiError } from "../utils/apiError";
 import { commentsSchema as Comment } from "../schemas/comments";
 import { ApiFeatures } from "../utils/ApiFeatures";
+import { NotificationService } from "../utils/notificationService";
 
 export const addComment = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -21,6 +22,8 @@ export const addComment = expressAsyncHandler(
         content,
       })
       .returning();
+
+    await NotificationService.commentedPost(user.id, user.name);
 
     res.status(201).json({ status: "success", data: comment });
   }

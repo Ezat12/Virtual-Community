@@ -13,6 +13,7 @@ import { ApiError } from "../utils/apiError";
 import { auditLogSchema } from "../schemas/auditLog";
 import { ApiFeatures } from "../utils/ApiFeatures";
 import { join } from "path";
+import { NotificationService } from "../utils/notificationService";
 
 const IsAdminToManageUsers = async (communityId: number, id: number) => {
   const [isAdmin] = await db
@@ -89,6 +90,8 @@ export const joinCommunity = expressAsyncHandler(
           })
           .returning();
 
+        await NotificationService.joinedCommunity(userId, community.name);
+
         return res.status(200).json({
           status: "success",
           message: "Welcome back to the community",
@@ -129,6 +132,8 @@ export const joinCommunity = expressAsyncHandler(
           visibility: "public",
         })
         .returning();
+
+      await NotificationService.joinedCommunity(userId, community.name);
 
       return res.status(201).json({
         status: "success",
@@ -393,6 +398,13 @@ export const handleJoinRequest = expressAsyncHandler(
         action: "accept",
         visibility: "public",
       });
+
+      if (requestMember.userId) {
+        await NotificationService.joinedCommunity(
+          requestMember.userId,
+          community.name
+        );
+      }
     } else {
       await db.insert(auditLogSchema).values({
         communityId: community.id,
@@ -401,6 +413,11 @@ export const handleJoinRequest = expressAsyncHandler(
         action: "reject",
         visibility: "private",
       });
+
+      await NotificationService.rejectedCommunity(
+        requestMember.userId as number,
+        community.name
+      );
     }
 
     await db.delete(JoinRequest).where(eq(JoinRequest.id, Number(requestId)));
