@@ -13,9 +13,22 @@ import commentsRoutes from "./routes/comment.route";
 import messageCommunityRoutes from "./routes/messageCommunity.route";
 import messagePrivateRoutes from "./routes/messagePrivate.route";
 import notificationsRoutes from "./routes/notification.route";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { messageCommunitySchema as MessageCommunity } from "./schemas";
 
 import path from "path";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { SocketMessageCommunity } from "./utils/socketIoServices/socketMessageCommunity";
 const app = express();
+const server = createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
 
 dotenv.config();
 
@@ -43,8 +56,23 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorHandler);
 
+const usersConnection = new Map<number, string>();
+const socketMessageCommunity = new SocketMessageCommunity(io);
+
+io.on("connection", (socket) => {
+  socket.on("register", (userId: number) => {
+    usersConnection.set(userId, socket.id);
+  });
+
+  socket.on("join-community", (communityId: string) => {
+    socket.join(communityId);
+  });
+
+  socketMessageCommunity.MessageCommunityHandler(socket);
+});
+
 const port = process.env.PORT || 4040;
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`server is ready on port ${port}`);
 });
