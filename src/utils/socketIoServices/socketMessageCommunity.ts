@@ -13,9 +13,12 @@ import {
 } from "../../validations/messageCommunity.validation";
 import { and, eq, sql } from "drizzle-orm";
 import { ZodError } from "zod";
+import { HandlerError } from "./handlerError";
 
-export class SocketMessageCommunity {
-  constructor(private io: Server) {}
+export class SocketMessageCommunity extends HandlerError {
+  constructor(private io: Server) {
+    super();
+  }
 
   MessageCommunityHandler(socket: Socket) {
     socket.on("send-community-message", (data) =>
@@ -78,7 +81,7 @@ export class SocketMessageCommunity {
         .returning();
 
       this.io
-        .to(communityId.toString())
+        .to(`community:${communityId.toString()}`)
         .emit("receive-community-message", newMessage);
     } catch (error) {
       this.handleError(socket, error);
@@ -108,11 +111,11 @@ export class SocketMessageCommunity {
         .where(eq(communitiesSchema.id, message.communityId));
 
       if (!community) {
-        socket.emit("error-message", "Community not found");
+        return socket.emit("error-message", "Community not found");
       }
 
       if (userId !== message.senderId) {
-        socket.emit(
+        return socket.emit(
           "error-message",
           "You are not allowed to update the message"
         );
@@ -129,7 +132,7 @@ export class SocketMessageCommunity {
       }
 
       this.io
-        .to(updated.communityId.toString())
+        .to(`community:${updated.communityId.toString()}`)
         .emit("update-message-community", updated);
     } catch (error) {
       this.handleError(socket, error);
@@ -149,7 +152,7 @@ export class SocketMessageCommunity {
         .where(eq(messageCommunitySchema.id, Number(messageId)));
 
       if (!message) {
-        socket.emit("error-message", "Message not found");
+        return socket.emit("error-message", "Message not found");
       }
 
       const [community] = await db
@@ -158,7 +161,7 @@ export class SocketMessageCommunity {
         .where(eq(communitiesSchema.id, message.communityId));
 
       if (!community) {
-        socket.emit("error-message", "Community not found");
+        return socket.emit("error-message", "Community not found");
       }
 
       const [isAdmin] = await db
@@ -177,7 +180,7 @@ export class SocketMessageCommunity {
         userId !== community.createdBy &&
         !isAdmin
       ) {
-        socket.emit(
+        return socket.emit(
           "error-message",
           "You are not allowed to delete the message"
         );
@@ -192,28 +195,6 @@ export class SocketMessageCommunity {
       socket.emit("delete-message-community", deleteMessage);
     } catch (error) {
       this.handleError(socket, error);
-    }
-  }
-
-  private handleError(socket: Socket, e: any) {
-    if (e instanceof ZodError) {
-      const uniqueErrors: Record<string, string> = {};
-
-      e.issues.forEach((err) => {
-        const field: string = err.path.join(".");
-        if (!uniqueErrors[field]) {
-          uniqueErrors[field] = err.message;
-        }
-      });
-
-      const errors = Object.entries(uniqueErrors).map(([field, message]) => ({
-        field,
-        message,
-      }));
-
-      socket.emit("error-message", errors.map((err) => err.message).join(", "));
-    } else {
-      socket.emit("error-message", "Something went wrong");
     }
   }
 }
