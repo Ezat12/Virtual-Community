@@ -39,7 +39,7 @@ function normalizePermissions(input?: unknown): Permission[] {
   return result.length ? result : ["manage_posts"];
 }
 
-class SocketCommunityAdmin extends HandlerError {
+export class SocketCommunityAdmin extends HandlerError {
   constructor(private io: Server) {
     super();
   }

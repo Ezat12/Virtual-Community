@@ -81,7 +81,7 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  const user = socket.data.user as { id: number } | undefined;
+  const user = socket.data.user;
   if (user?.id) {
     socket.join(`user:${user.id}`);
     const set = usersConnection.get(user.id) ?? new Set<string>();
@@ -104,6 +104,52 @@ io.on("connection", (socket) => {
     set.add(socket.id);
     usersConnection.set(userId, set);
   });
+
+  socket.on(
+    "join-admin-room",
+    async (payload: {
+      communityId: number;
+      area: "users" | "posts" | "settings";
+    }) => {
+      try {
+        const user = socket.data.user;
+        if (!user)
+          return socket.emit("error", {
+            code: 401,
+            message: "Unauthenticated",
+          });
+
+        const communityId = Number(payload.communityId);
+        if (Number.isNaN(communityId))
+          return socket.emit("error", {
+            code: 400,
+            message: "Invalid communityId",
+          });
+
+        // const isAdmin = await checkUserIsAdminForCommunity(
+        //   user.id,
+        //   communityId
+        // );
+        // if (!isAdmin)
+        //   return socket.emit("error", { code: 403, message: "Forbidden" });
+
+        const room = `community-admin:${communityId}:${payload.area}`;
+        socket.join(room);
+        socket.emit("joined-room", { room });
+      } catch (err) {
+        console.error("join-admin-room error", err);
+        socket.emit("error", { code: 500, message: "Server error" });
+      }
+    }
+  );
+
+  socket.on(
+    "leave-admin-room",
+    (payload: { communityId: number; area: string }) => {
+      const room = `community-admin:${payload.communityId}:${payload.area}`;
+      socket.leave(room);
+    }
+  );
 
   socketMessageCommunity.MessageCommunityHandler(socket);
   socketMessagePrivate.messagePrivateHandler(socket);

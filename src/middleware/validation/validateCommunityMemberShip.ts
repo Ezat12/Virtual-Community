@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import expressAsyncHandler from "express-async-handler";
-import { ZodError } from "zod";
+import { unknown, ZodError } from "zod";
 import {
   communitiesSchema,
   communityMembershipsSchema,
@@ -11,6 +11,37 @@ import { db } from "../../db";
 import { ApiError } from "../../utils/apiError";
 import { joinRequestValidation } from "../../validations/joinRequest.validation";
 
+export const joinRequestPayload = async (payload: unknown, userId: number) => {
+  const validateData = await joinRequestValidation.parseAsync(payload);
+
+  const [community] = await db
+    .select()
+    .from(communitiesSchema)
+    .where(eq(communitiesSchema.id, Number(validateData.communityId)));
+
+  if (!community) {
+    throw new ApiError("Community not found", 404);
+  }
+
+  // Check if already has pending request
+  const [existingRequest] = await db
+    .select()
+    .from(joinRequestSchema)
+    .where(
+      and(
+        eq(joinRequestSchema.communityId, community.id),
+        eq(joinRequestSchema.userId, userId),
+        eq(joinRequestSchema.status, "pending")
+      )
+    );
+
+  if (existingRequest) {
+    throw new ApiError("You already have a pending request", 400);
+  }
+
+  return { community, validateData };
+};
+
 export const validateJoinRequest = expressAsyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -19,33 +50,8 @@ export const validateJoinRequest = expressAsyncHandler(
       if (!userId) {
         return next(new ApiError("Unauthorized: User not authenticated", 401));
       }
-      const validateData = await joinRequestValidation.parseAsync(req.params);
 
-      const [community] = await db
-        .select()
-        .from(communitiesSchema)
-        .where(eq(communitiesSchema.id, Number(validateData.communityId)));
-
-      if (!community) {
-        return next(new ApiError("Community not found", 404));
-      }
-
-      // Check if already has pending request
-      const [existingRequest] = await db
-        .select()
-        .from(joinRequestSchema)
-        .where(
-          and(
-            eq(joinRequestSchema.communityId, community.id),
-            eq(joinRequestSchema.userId, userId),
-            eq(joinRequestSchema.status, "pending")
-          )
-        );
-
-      if (existingRequest) {
-        return next(new ApiError("You already have a pending request", 400));
-      }
-
+      const { community } = await joinRequestPayload(req.params, req.user.id);
       req.community = community;
 
       next();
