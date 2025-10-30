@@ -15,7 +15,7 @@ import { ApiFeatures } from "../utils/ApiFeatures";
 import { join } from "path";
 import { NotificationService } from "../utils/notificationService";
 
-const IsAdminToManageUsers = async (communityId: number, id: number) => {
+export const IsAdminToManageUsers = async (communityId: number, id: number) => {
   const [isAdmin] = await db
     .select()
     .from(CommunityAdmins)

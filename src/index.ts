@@ -23,6 +23,8 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { SocketMessageCommunity } from "./utils/socketIoServices/socketMessageCommunity";
 import { SocketMessagePrivate } from "./utils/socketIoServices/socketMessagePrivate";
+import { SocketCommunityAdmin } from "./utils/socketIoServices/socketCommuityAdmin";
+import { SocketCommunityMember } from "./utils/socketIoServices/socketCommunityMember";
 const app = express();
 const server = createServer(app);
 
@@ -61,6 +63,8 @@ app.use(errorHandler);
 const usersConnection = new Map<number, Set<string>>();
 const socketMessageCommunity = new SocketMessageCommunity(io);
 const socketMessagePrivate = new SocketMessagePrivate(io);
+const socketCommunityAdmin = new SocketCommunityAdmin(io);
+const socketCommunityMember = new SocketCommunityMember(io);
 
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
@@ -153,6 +157,8 @@ io.on("connection", (socket) => {
 
   socketMessageCommunity.MessageCommunityHandler(socket);
   socketMessagePrivate.messagePrivateHandler(socket);
+  socketCommunityAdmin.CommunityAdminHandler(socket);
+  socketCommunityMember.CommunityMemberHandler(socket);
 
   socket.on("disconnect", () => {
     const uid = socket.data.user?.id;
