@@ -21,10 +21,15 @@ import { messageCommunitySchema as MessageCommunity } from "./schemas";
 import path from "path";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { SocketMessageCommunity } from "./utils/socketIoServices/socketMessageCommunity";
+import { SocketMessageCommunity } from "./utils/socketIoServices/messageCommunity/socketMessageCommunity";
 import { SocketMessagePrivate } from "./utils/socketIoServices/socketMessagePrivate";
 import { SocketCommunityAdmin } from "./utils/socketIoServices/socketCommuityAdmin";
 import { SocketCommunityMember } from "./utils/socketIoServices/socketCommunityMember";
+import { CommunityMessageServices } from "./utils/socketIoServices/messageCommunity/communityMessage.services";
+import {
+  AuthorizationMessageCommunityServices,
+  MessageCommunityRepository,
+} from "./utils/socketIoServices/messageCommunity/communityMessages.repository";
 const app = express();
 const server = createServer(app);
 
@@ -60,8 +65,18 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorHandler);
 
+const repoCommunityMessage = new MessageCommunityRepository();
+const authCommunityMessage = new AuthorizationMessageCommunityServices();
+const communityMessageServices = new CommunityMessageServices(
+  repoCommunityMessage,
+  authCommunityMessage
+);
+
 const usersConnection = new Map<number, Set<string>>();
-const socketMessageCommunity = new SocketMessageCommunity(io);
+const socketMessageCommunity = new SocketMessageCommunity(
+  io,
+  communityMessageServices
+);
 const socketMessagePrivate = new SocketMessagePrivate(io);
 const socketCommunityAdmin = new SocketCommunityAdmin(io);
 const socketCommunityMember = new SocketCommunityMember(io);
