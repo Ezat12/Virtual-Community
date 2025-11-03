@@ -22,7 +22,7 @@ import path from "path";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { SocketMessageCommunity } from "./utils/socketIoServices/messageCommunity/socketMessageCommunity";
-import { SocketMessagePrivate } from "./utils/socketIoServices/socketMessagePrivate";
+import { SocketMessagePrivate } from "./utils/socketIoServices/messagePrivate/socketMessagePrivate";
 import { SocketCommunityAdmin } from "./utils/socketIoServices/socketCommuityAdmin";
 import { SocketCommunityMember } from "./utils/socketIoServices/socketCommunityMember";
 import { CommunityMessageServices } from "./utils/socketIoServices/messageCommunity/communityMessage.services";
@@ -30,6 +30,8 @@ import {
   AuthorizationMessageCommunityServices,
   MessageCommunityRepository,
 } from "./utils/socketIoServices/messageCommunity/communityMessages.repository";
+import { MessagePrivateServices } from "./utils/socketIoServices/messagePrivate/messagePrivate.services";
+import { MessagePrivateRepository } from "./utils/socketIoServices/messagePrivate/messagePrivate.repository";
 const app = express();
 const server = createServer(app);
 
@@ -65,19 +67,26 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorHandler);
 
+const usersConnection = new Map<number, Set<string>>();
+// Message Community
 const repoCommunityMessage = new MessageCommunityRepository();
 const authCommunityMessage = new AuthorizationMessageCommunityServices();
 const communityMessageServices = new CommunityMessageServices(
   repoCommunityMessage,
   authCommunityMessage
 );
-
-const usersConnection = new Map<number, Set<string>>();
 const socketMessageCommunity = new SocketMessageCommunity(
   io,
   communityMessageServices
 );
-const socketMessagePrivate = new SocketMessagePrivate(io);
+// Message Private
+const messagePrivateRepo = new MessagePrivateRepository();
+const messagePrivateServices = new MessagePrivateServices(messagePrivateRepo);
+const socketMessagePrivate = new SocketMessagePrivate(
+  io,
+  messagePrivateServices
+);
+// Community admin
 const socketCommunityAdmin = new SocketCommunityAdmin(io);
 const socketCommunityMember = new SocketCommunityMember(io);
 
@@ -111,7 +120,7 @@ io.on("connection", (socket) => {
   socket.on("join-community", async (communityId: string) => {
     const cid = Number(communityId);
     if (!user) return socket.emit("error-message", "Unauthorized");
-    // const isMember = await checkIfUserIsMember(user.id, cid); // نفذ استعلام DB هنا
+    // const isMember = await checkIfUserIsMember(user.id, cid);
     // if (!isMember) return socket.emit("error-message", "You are not a member");
     socket.join(`community:${cid}`);
   });
