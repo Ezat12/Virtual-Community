@@ -35,7 +35,10 @@ export class SocketMessagePrivate extends HandlerError {
         content
       );
 
-      socket.emit("send-message", message);
+      this.io
+        .to(`user:${receiverId}`)
+        .to(`user:${senderId}`)
+        .emit("send-message", message);
     } catch (error) {
       this.handleError(socket, error);
     }
@@ -43,7 +46,7 @@ export class SocketMessagePrivate extends HandlerError {
 
   private async updateMessagePrivate(
     socket: Socket,
-    data: { messageId: number; content: string; userId: number }
+    data: { messageId: number; content: string }
   ) {
     try {
       const { messageId, content } = data;
@@ -55,25 +58,29 @@ export class SocketMessagePrivate extends HandlerError {
         userId,
         content
       );
-      socket.emit("update-message", updateMessage);
+      this.io
+        .to(`user:${updateMessage.receiverId}`)
+        .to(`user:${updateMessage.senderId}`)
+        .emit("update-message", updateMessage);
     } catch (e) {
       this.handleError(socket, e);
     }
   }
 
-  private async deleteMessage(
-    socket: Socket,
-    data: { messageId: number; userId: number }
-  ) {
+  private async deleteMessage(socket: Socket, data: { messageId: number }) {
     try {
-      const { messageId, userId } = data;
+      const { messageId } = data;
+      const userId = socket.data.user.id;
 
       const deleteMessage = await this.MPServices.deleteMessage(
         messageId,
         userId
       );
 
-      socket.emit("delete-message", deleteMessage);
+      this.io
+        .to(`user:${deleteMessage.receiverId}`)
+        .to(`user:${deleteMessage.senderId}`)
+        .emit("delete-message", deleteMessage);
     } catch (e) {
       this.handleError(socket, e);
     }

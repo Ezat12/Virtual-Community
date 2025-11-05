@@ -4,23 +4,6 @@ import {
 } from "../controllers/notification.controller";
 
 export class NotificationService {
-  // لما Post يتقبل
-  // static async postAccepted(userId: number) {
-  //   return await addNotification(
-  //     userId,
-  //     "Your post has been accepted 🎉",
-  //     TypeNotifications.AcceptPost
-  //   );
-  // }
-
-  // // لما Post يترفض
-  // static async postRejected(userId: number) {
-  //   return await addNotification(
-  //     userId,
-  //     "Your post has been rejected ❌",
-  //     TypeNotifications.RejectPost
-  //   );
-  // }
 
   // لما حد يعمل Like
   static async likedPost(userId: number, likerName: string) {

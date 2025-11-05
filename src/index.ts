@@ -16,14 +16,11 @@ import messagePrivateRoutes from "./routes/messagePrivate.route";
 import notificationsRoutes from "./routes/notification.route";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { messageCommunitySchema as MessageCommunity } from "./schemas";
 
 import path from "path";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
 import { SocketMessageCommunity } from "./utils/socketIoServices/messageCommunity/socketMessageCommunity";
 import { SocketMessagePrivate } from "./utils/socketIoServices/messagePrivate/socketMessagePrivate";
-import { SocketCommunityAdmin } from "./utils/socketIoServices/socketCommuityAdmin";
+import { SocketCommunityAdmin } from "./utils/socketIoServices/communityAdmins/socketCommunityAdmin";
 import { SocketCommunityMember } from "./utils/socketIoServices/socketCommunityMember";
 import { CommunityMessageServices } from "./utils/socketIoServices/messageCommunity/communityMessage.services";
 import {
@@ -32,6 +29,8 @@ import {
 } from "./utils/socketIoServices/messageCommunity/communityMessages.repository";
 import { MessagePrivateServices } from "./utils/socketIoServices/messagePrivate/messagePrivate.services";
 import { MessagePrivateRepository } from "./utils/socketIoServices/messagePrivate/messagePrivate.repository";
+import { CommunityAdminRepo } from "./utils/socketIoServices/communityAdmins/communityAdmin.repository";
+import { CommunityAdminsServices } from "./utils/socketIoServices/communityAdmins/communityAdmin.services";
 const app = express();
 const server = createServer(app);
 
@@ -87,7 +86,13 @@ const socketMessagePrivate = new SocketMessagePrivate(
   messagePrivateServices
 );
 // Community admin
-const socketCommunityAdmin = new SocketCommunityAdmin(io);
+const communityAdminRepo = new CommunityAdminRepo();
+const communityAdminsServices = new CommunityAdminsServices(communityAdminRepo);
+const socketCommunityAdmin = new SocketCommunityAdmin(
+  io,
+  communityAdminsServices
+);
+// Community member
 const socketCommunityMember = new SocketCommunityMember(io);
 
 io.use((socket, next) => {
