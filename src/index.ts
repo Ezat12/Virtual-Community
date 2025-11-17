@@ -18,19 +18,8 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 import path from "path";
-import { SocketMessageCommunity } from "./utils/socketIoServices/messageCommunity/socketMessageCommunity";
-import { SocketMessagePrivate } from "./utils/socketIoServices/messagePrivate/socketMessagePrivate";
-import { SocketCommunityAdmin } from "./utils/socketIoServices/communityAdmins/socketCommunityAdmin";
-import { SocketCommunityMember } from "./utils/socketIoServices/socketCommunityMember";
-import { CommunityMessageServices } from "./utils/socketIoServices/messageCommunity/communityMessage.services";
-import {
-  AuthorizationMessageCommunityServices,
-  MessageCommunityRepository,
-} from "./utils/socketIoServices/messageCommunity/communityMessages.repository";
-import { MessagePrivateServices } from "./utils/socketIoServices/messagePrivate/messagePrivate.services";
-import { MessagePrivateRepository } from "./utils/socketIoServices/messagePrivate/messagePrivate.repository";
-import { CommunityAdminRepo } from "./utils/socketIoServices/communityAdmins/communityAdmin.repository";
-import { CommunityAdminsServices } from "./utils/socketIoServices/communityAdmins/communityAdmin.services";
+import { setupSocket } from "./socket";
+
 const app = express();
 const server = createServer(app);
 
@@ -66,143 +55,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorHandler);
 
-const usersConnection = new Map<number, Set<string>>();
-// Message Community
-const repoCommunityMessage = new MessageCommunityRepository();
-const authCommunityMessage = new AuthorizationMessageCommunityServices();
-const communityMessageServices = new CommunityMessageServices(
-  repoCommunityMessage,
-  authCommunityMessage
-);
-const socketMessageCommunity = new SocketMessageCommunity(
-  io,
-  communityMessageServices
-);
-// Message Private
-const messagePrivateRepo = new MessagePrivateRepository();
-const messagePrivateServices = new MessagePrivateServices(messagePrivateRepo);
-const socketMessagePrivate = new SocketMessagePrivate(
-  io,
-  messagePrivateServices
-);
-// Community admin
-const communityAdminRepo = new CommunityAdminRepo();
-const communityAdminsServices = new CommunityAdminsServices(communityAdminRepo);
-const socketCommunityAdmin = new SocketCommunityAdmin(
-  io,
-  communityAdminsServices
-);
-// Community member
-const socketCommunityMember = new SocketCommunityMember(io);
-
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-  if (!token) return next(new ApiError("Authentication error", 401));
-  try {
-    const secretKey = process.env.SECRET_KEY_JWT;
-    if (!secretKey) return next(new ApiError("Missing SECRET_KEY_JWT", 500));
-    const user = jwt.verify(token, secretKey) as {
-      id: number;
-      [k: string]: any;
-    };
-    socket.data.user = user;
-    next();
-  } catch (e: unknown) {
-    if (e instanceof Error) return next(new ApiError(e.message, 500));
-    return next(new ApiError("Unknown error", 500));
-  }
-});
-
-io.on("connection", (socket) => {
-  const user = socket.data.user;
-  if (user?.id) {
-    socket.join(`user:${user.id}`);
-    const set = usersConnection.get(user.id) ?? new Set<string>();
-    set.add(socket.id);
-    usersConnection.set(user.id, set);
-  }
-
-  socket.on("join-community", async (communityId: string) => {
-    const cid = Number(communityId);
-    if (!user) return socket.emit("error-message", "Unauthorized");
-    // const isMember = await checkIfUserIsMember(user.id, cid);
-    // if (!isMember) return socket.emit("error-message", "You are not a member");
-    socket.join(`community:${cid}`);
-  });
-
-  socket.on("register", (userId: number) => {
-    if (user?.id !== userId)
-      return socket.emit("error-message", "Invalid register");
-    const set = usersConnection.get(userId) ?? new Set<string>();
-    set.add(socket.id);
-    usersConnection.set(userId, set);
-  });
-
-  socket.on(
-    "join-admin-room",
-    async (payload: {
-      communityId: number;
-      area: "users" | "posts" | "settings";
-    }) => {
-      try {
-        const user = socket.data.user;
-        if (!user)
-          return socket.emit("error", {
-            code: 401,
-            message: "Unauthenticated",
-          });
-
-        const communityId = Number(payload.communityId);
-        if (Number.isNaN(communityId))
-          return socket.emit("error", {
-            code: 400,
-            message: "Invalid communityId",
-          });
-
-        // const isAdmin = await checkUserIsAdminForCommunity(
-        //   user.id,
-        //   communityId
-        // );
-        // if (!isAdmin)
-        //   return socket.emit("error", { code: 403, message: "Forbidden" });
-
-        const room = `community-admin:${communityId}:${payload.area}`;
-        socket.join(room);
-        socket.emit("joined-room", { room });
-      } catch (err) {
-        console.error("join-admin-room error", err);
-        socket.emit("error", { code: 500, message: "Server error" });
-      }
-    }
-  );
-
-  socket.on(
-    "leave-admin-room",
-    (payload: { communityId: number; area: string }) => {
-      const room = `community-admin:${payload.communityId}:${payload.area}`;
-      socket.leave(room);
-    }
-  );
-
-  socketMessageCommunity.MessageCommunityHandler(socket);
-  socketMessagePrivate.messagePrivateHandler(socket);
-  socketCommunityAdmin.CommunityAdminHandler(socket);
-  socketCommunityMember.CommunityMemberHandler(socket);
-
-  socket.on("disconnect", () => {
-    const uid = socket.data.user?.id;
-    if (typeof uid === "number") {
-      const set = usersConnection.get(uid);
-      set?.delete(socket.id);
-      if (!set || set.size === 0) usersConnection.delete(uid);
-    } else {
-      usersConnection.forEach((sockets, id) => {
-        sockets.delete(socket.id);
-        if (sockets.size === 0) usersConnection.delete(id);
-      });
-    }
-  });
-});
+setupSocket(io);
 
 const port = process.env.PORT || 4040;
 
