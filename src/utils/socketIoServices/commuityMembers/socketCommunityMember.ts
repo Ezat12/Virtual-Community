@@ -1,17 +1,17 @@
 import { Server, Socket } from "socket.io";
-import { HandlerError } from "./handlerError";
+import { HandlerError } from "../handlerError";
 import { number, unknown } from "zod";
-import { joinRequestPayload } from "../../middleware/validation/validateCommunityMemberShip";
-import { NotificationService } from "../notificationService";
-import { db } from "../../db";
+import { joinRequestPayload } from "../../../middleware/validation/validateCommunityMemberShip";
+import { NotificationService } from "../../notificationService";
+import { db } from "../../../db";
 import {
   communitiesSchema as Community,
   communityMembershipsSchema as CommunityMemberShip,
   joinRequestSchema,
-} from "../../schemas";
+} from "../../../schemas";
 import { and, eq } from "drizzle-orm";
-import { auditLogSchema } from "../../schemas/auditLog";
-import { IsAdminToManageUsers } from "../../controllers/communityMembers.controller";
+import { auditLogSchema } from "../../../schemas/auditLog";
+import { IsAdminToManageUsers } from "../../../controllers/communityMembers.controller";
 
 export class SocketCommunityMember extends HandlerError {
   constructor(private io: Server) {

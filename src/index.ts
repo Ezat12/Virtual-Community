@@ -1,7 +1,6 @@
 import express, { Response, Request, NextFunction } from "express";
 import morgan from "morgan";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
 import { errorHandler } from "./middleware/errorHandler";
 import { ApiError } from "./utils/apiError";
 import userRoute from "./routes/user.route";
