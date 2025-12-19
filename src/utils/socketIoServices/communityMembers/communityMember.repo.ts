@@ -39,14 +39,24 @@ export class CommunityMemberRepo {
     return member || null;
   }
 
-  async updateMember(removedAt: Date | null, removedBy: number | null) {
-    const [reactivated] = await db
+  async updateMember(
+    removedAt: Date | null,
+    removedBy: number | null,
+    memberId: number,
+    communityId: number
+  ) {
+    const [update] = await db
       .update(communityMembershipsSchema)
       .set({ removedAt, removedBy })
-      .where(eq(communityMembershipsSchema.id, communityMembershipsSchema.id))
+      .where(
+        and(
+          eq(communityMembershipsSchema.userId, memberId),
+          eq(communityMembershipsSchema.communityId, communityId)
+        )
+      )
       .returning();
 
-    return reactivated || null;
+    return update || null;
   }
 
   async getCommunityById(communityId: number) {

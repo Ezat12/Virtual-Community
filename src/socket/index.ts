@@ -13,6 +13,10 @@ import { SocketMessagePrivate } from "../utils/socketIoServices/messagePrivate/s
 import { CommunityAdminsServices } from "../utils/socketIoServices/communityAdmins/communityAdmin.services";
 import { CommunityAdminRepo } from "../utils/socketIoServices/communityAdmins/communityAdmin.repository";
 import { SocketCommunityAdmin } from "../utils/socketIoServices/communityAdmins/socketCommunityAdmin";
+import { CommunityMemberRepo } from "../utils/socketIoServices/communityMembers/communityMember.repo";
+import { CommunityMemberEvent } from "../utils/socketIoServices/communityMembers/communityMember.event";
+import { SocketCommunityMember } from "../utils/socketIoServices/communityMembers/socketCommunityMember";
+import { CommunityMemberServices } from "../utils/socketIoServices/communityMembers/communityMember.service";
 
 // Message Community
 const repoCommunityMessage = new MessageCommunityRepository();
@@ -42,6 +46,15 @@ export const setupSocket = (io: Server) => {
   const socketCommunityAdmin = new SocketCommunityAdmin(
     io,
     communityAdminsServices
+  );
+
+  const communityMemberServices = new CommunityMemberServices(
+    new CommunityMemberRepo(),
+    new CommunityMemberEvent(io)
+  );
+  const socketCommunityMember = new SocketCommunityMember(
+    io,
+    communityMemberServices
   );
 
   authSocket(io);
@@ -84,5 +97,6 @@ export const setupSocket = (io: Server) => {
     socketMessageCommunity.MessageCommunityHandler(socket);
     socketMessagePrivate.messagePrivateHandler(socket);
     socketCommunityAdmin.CommunityAdminHandler(socket);
+    socketCommunityMember.CommunityMemberHandler(socket);
   });
 };
