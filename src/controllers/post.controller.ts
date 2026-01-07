@@ -85,10 +85,16 @@ export const createPost = expressAsyncHandler(
           .values(mentionsValues)
           .returning();
 
+        const io = req.app.get("io");
+
         await Promise.all(
-          req.body.mentions.map((userId: number) =>
-            NotificationService.mentioned(userId, user.name)
-          )
+          req.body.mentions.map(async (userId: number) => {
+            const notification = await NotificationService.mentioned(
+              userId,
+              user.name
+            );
+            io.to(`user:${userId}`).emit(`notification:new`, notification);
+          })
         );
       } catch (e) {
         await db.delete(Post).where(eq(Post.id, post.id));

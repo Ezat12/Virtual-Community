@@ -33,7 +33,10 @@ export class SocketCommunityMember extends HandlerError {
       const userId = socket.data.user.id;
 
       if (!userId) {
-        throw new ApiError("You are not authorized. Please log in first.", 401);
+        throw new ApiError(
+          "You are not authenticated. Please log in first.",
+          401
+        );
       }
 
       const { community } = await joinRequestPayload(data.communityId, userId);
@@ -51,7 +54,10 @@ export class SocketCommunityMember extends HandlerError {
       const userId = socket.data.user.id;
 
       if (!userId) {
-        throw new ApiError("You are not authorized. Please log in first.", 401);
+        throw new ApiError(
+          "You are not authenticated. Please log in first.",
+          401
+        );
       }
 
       const { communityId } = data;

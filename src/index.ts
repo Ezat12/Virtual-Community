@@ -27,6 +27,7 @@ const io = new Server(server, {
     origin: "*",
   },
 });
+app.set("io", io);
 
 dotenv.config();
 
