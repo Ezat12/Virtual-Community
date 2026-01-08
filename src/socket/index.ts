@@ -20,6 +20,9 @@ import { CommunityMemberServices } from "../utils/socketIoServices/communityMemb
 import { SocketPost } from "../utils/socketIoServices/posts/socketPost";
 import { PostServices } from "../utils/socketIoServices/posts/post.service";
 import { PostRepo } from "../utils/socketIoServices/posts/post.repo";
+import { SocketComment } from "../utils/socketIoServices/comments/comment.socket";
+import { commentsServices } from "../utils/socketIoServices/comments/comment.service";
+import { CommentsRepo } from "../utils/socketIoServices/comments/comment.repo";
 
 // Message Community
 const repoCommunityMessage = new MessageCommunityRepository();
@@ -38,6 +41,8 @@ const communityAdminsServices = new CommunityAdminsServices(communityAdminRepo);
 //post
 const postRepo = new PostRepo();
 const postServices = new PostServices(postRepo);
+
+const commentServices = new commentsServices(new CommentsRepo());
 
 export const setupSocket = (io: Server) => {
   const socketMessageCommunity = new SocketMessageCommunity(
@@ -65,6 +70,8 @@ export const setupSocket = (io: Server) => {
   );
 
   const socketPost = new SocketPost(io, postServices);
+
+  const socketComments = new SocketComment(io, commentServices);
 
   authSocket(io);
 
@@ -107,6 +114,7 @@ export const setupSocket = (io: Server) => {
     socketMessagePrivate.messagePrivateHandler(socket);
     socketCommunityAdmin.CommunityAdminHandler(socket);
     socketCommunityMember.CommunityMemberHandler(socket);
+    socketComments.commentSocketHandler(socket);
     socketPost.SocketPostHandler(socket);
   });
 };

@@ -133,7 +133,7 @@ export const updateComment = expressAsyncHandler(
 
     if (comment.userId !== user.id) {
       return next(
-        new ApiError("You are not authorized to update comment", 403)
+        new ApiError("You are not authorized to update this comment", 403)
       );
     }
 
@@ -158,7 +158,8 @@ export const deleteComment = expressAsyncHandler(
     const [deletedComment] = await db
       .delete(Comment)
       .where(eq(Comment.id, Number(commentId)))
-      .returning();
+      .returning()
+      .execute();
 
     res.status(200).json({
       status: "success",
